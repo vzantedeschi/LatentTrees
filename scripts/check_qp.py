@@ -11,7 +11,7 @@ def find_epsilons(X):
     return np.min(Xd, axis=0)
 
 
-def qp(X, A, b, d_scores):
+def qp(X, A, b, d_scores, boolean=False, regularize=False):
     descendent_l = [1, 3, 5]
     descendent_r = [2, 4, 6]
     ancestor_l = {
@@ -48,14 +48,8 @@ def qp(X, A, b, d_scores):
     XA = X @ A.T  # n_samples by n_split
     epsA = eps @ A.T
 
-    boolean = False
-    regularize = False
-
     z = cx.Variable((n, n_nodes), boolean=boolean)
-    l = cx.Variable(n_nodes, boolean=boolean)
     d = cx.Variable(n_nodes, boolean=boolean)
-
-    N_min = 1
 
     constraints = []
 
@@ -63,8 +57,6 @@ def qp(X, A, b, d_scores):
         constraints.extend([
             z >= 0,
             z <= 1,
-            l >= 0,
-            l <= 1,
             d >= 0,
             d <= 1
         ])
@@ -79,23 +71,20 @@ def qp(X, A, b, d_scores):
             c = ((XA[:, m] + epsA[m]) <= b[t] + (1 + eps_max) * (1 - z[:, t]))
             constraints.append(c)
 
-    # does node contain points
+    # is node active
     for t in range(n_nodes):
-        c = z[:, t] <= l[t]
+        c = z[:, t] <= d[t]
         constraints.append(c)
-
-    constraints.append(l <= d)
-    constraints.append(cx.sum(z, axis=0) >= N_min * l)
 
     # structure of d and z
     for t in range(1, n_nodes):  # except root
         c = d[t] <= d[parent[t]]
         constraints.append(c)
 
-        c = z[t, :] <= z[parent[t], :]
+        c = z[:, t] <= z[:, parent[t]]
         constraints.append(c)
 
-        c = z[t, :] + z[sibling[t], :] <= 1
+        c = z[:, t] + z[:, sibling[t]] <= 1
         constraints.append(c)
 
     # print(constraints)
@@ -105,7 +94,7 @@ def qp(X, A, b, d_scores):
     pb = cx.Problem(cx.Maximize(obj), constraints)
     pb.solve(verbose=True)
 
-    print(z.value)
+    print(np.round(z.value, 2))
 
 
 def main():
