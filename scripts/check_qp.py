@@ -85,11 +85,17 @@ def qp(X, y, A, b, d_scores, alpha=1.0, boolean=False, regularize=False):
         ])
 
     ## tree compatibility
+    # NOTE: the results are the same with either set of constraints
+    #for t in possible_split_nodes:
+    #    c = (XA[:, t] >= b[t] - 1 + z[:, descendent_r[t]])
+    #    constraints.append(c)
+    #    c = ((XAmu[:, t]) <= b[t] + (1 + mu) * (1 - z[:, descendent_l[t]]))
+    #    constraints.append(c)
     for t in range(n_nodes):#possible_split_nodes:
         for m in ancestor_r[t]:
             c = (XA[:, m] >= b[m] - 1 + z[:, t])# - (1-d[m]))
             constraints.append(c)
-
+    
         for m in ancestor_l[t]:
             #c = ((XA[:, m] + epsA[m]) <= b[t] + (1 + eps_max) * (1 - z[:, t]))
             c = ((XAmu[:, m]) <= b[m] + (1 + mu) * (1 - z[:, t]))
@@ -196,7 +202,7 @@ def main():
 
     d_scores = np.array([0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0])#np.ones(n_nodes)
 
-    z, d = qp(X, y, A, b, d_scores, boolean=True)
+    z, d = qp(X, y, A, b, d_scores, boolean=False, regularize=False)
 
     print('does z respect the tree splits? all of the print statements below should be all 1s')
     print('----------------------------------------------------------------------------------')
