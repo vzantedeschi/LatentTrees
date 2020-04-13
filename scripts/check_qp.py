@@ -32,7 +32,7 @@ def plot_XOR(X, z, d, eta, boolean=False):
     plt.savefig('result_bool=' + str(boolean) + '.png')
 
 
-def qp(X, y, A, b, d_scores, alpha=0.0, boolean=False, regularize=False):
+def qp(X, y, A, b, d_scores, alpha=1.0, boolean=False, regularize=False):
     descendent_l = [1, 3, 5]
     descendent_r = [2, 4, 6]
     ancestor_l = {
@@ -123,7 +123,11 @@ def qp(X, y, A, b, d_scores, alpha=0.0, boolean=False, regularize=False):
 
         for m in ancestor_l[t]:
             obj += cx.sum((b[m] - XA[:,m]) * z[:, t])
+    
+    obj = (1.0/(n_nodes*n))*obj
 
+    if regularize:
+        obj += (1.0/n_nodes)*(d @ d_scores)
     pb = cx.Problem(cx.Maximize(obj), constraints)
     pb.solve(verbose=True)
     print('qp res')
@@ -190,10 +194,28 @@ def main():
     print('zz')
     print(zz)
 
-    d_scores = np.ones(n_nodes)
+    d_scores = np.array([0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0])#np.ones(n_nodes)
 
-    z, d = qp(X, y, A, b, d_scores)
+    z, d = qp(X, y, A, b, d_scores, boolean=True)
 
+    print('does z respect the tree splits? all of the print statements below should be all 1s')
+    print('----------------------------------------------------------------------------------')
+    print('0->1')
+    print(z[np.where((np.dot(X, A[0]) < b[0])==True)[0],1])
+    print('0->2')
+    print(z[np.where((np.dot(X, A[0]) >= b[0])==True)[0],2])
+    ix1R = np.where((np.dot(X, A[0]) >= b[0])==True)[0]
+    ix1L = np.where((np.dot(X, A[0]) <  b[0])==True)[0]
+    print('1->4')
+    print(z[ix1L[np.where((np.dot(X[ix1L], A[1]) >= b[1])==True)[0]],4])
+    print('2->5')
+    print(z[ix1R[np.where((np.dot(X[ix1R], A[2]) < b[2])==True)[0]],5])
+    print('2->6')
+    print(z[ix1R[np.where((np.dot(X[ix1R], A[2]) >= b[2])==True)[0]],6])
+    print('the following should be all 0s')
+    print('------------------------------')
+    print('1->3')
+    print(z[ix1L[np.where((np.dot(X[ix1L], A[1]) >= b[1])==True)[0]],3])
 
 
 
