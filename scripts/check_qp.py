@@ -59,10 +59,11 @@ def qp(X, y, A, b, d_scores, alpha=1.0, boolean=False, regularize=False):
     leaves = [3, 4, 5, 6]
     parent = [None, 0, 0, 1, 1, 2, 2]
     sibling = [None, 2, 1, 4, 3, 6, 5]
+    nodes_per_layer = [[1,2], [3,4,5,6]]
 
     #eps = find_epsilons(X)
     #eps_max = np.max(eps)
-    mu = 0.005
+    mu = 0.0#0.005
 
     n = X.shape[0]
     n_split = 3
@@ -72,7 +73,9 @@ def qp(X, y, A, b, d_scores, alpha=1.0, boolean=False, regularize=False):
     #epsA = eps @ A.T
 
     z = cx.Variable((n, n_nodes), boolean=boolean)
+    #zabs = cx.Variable((n, n_nodes), boolean=boolean)
     d = cx.Variable(n_nodes, boolean=boolean)
+    #dmax = cx.Variable(len(nodes_per_layer), boolean=boolean)
 
     constraints = []
 
@@ -81,7 +84,11 @@ def qp(X, y, A, b, d_scores, alpha=1.0, boolean=False, regularize=False):
             z >= 0,
             z <= 1,
             d >= 0,
-            d <= 1,
+            d <= 1
+            #zabs >= 0,
+            #zabs <= 1
+            #dmax >= 0,
+            #dmax <= 1
         ])
 
     ## tree compatibility
@@ -105,6 +112,42 @@ def qp(X, y, A, b, d_scores, alpha=1.0, boolean=False, regularize=False):
     for t in range(n_nodes):#possible_split_nodes:
         c = z[:, t] <= d[t]
         constraints.append(c)
+        #c = zabs[:, t] >= z[:, t] - 0.5
+        #constraints.append(c)
+        #c = zabs[:, t] >= 0.5 - z[:, t]
+        #constraints.append(c)
+
+    #count = 0
+    #import pdb
+    #pdb.set_trace()
+    #for l in nodes_per_layer:
+    #    for t in l:
+    #        c = d[t] <= dmax[count]
+    #        constraints.append(c)
+    #    #c = zabs[:,count] >= cx.sum(z[:,l], axis=1)
+    #    #constraints.append(c)
+    #    #c = zabs[:,count] >= -cx.sum(z[:,l], axis=1)
+    #    #constraints.append(c)
+    #    c = cx.sum(z[:,l], axis=1) == dmax[count]
+    #    constraints.append(c)
+    #    #c = zabs[:,count] == dmax[count]
+    #    #constraints.append(c)
+    #    count += 1
+    #    #a = None
+    #    #c = cx.sum(d[l]) <= dmax[count]
+    #    #constraints.append(c)
+    #    ##c = d[t+1] <= dmax[count]
+    #    ##constraints.append(c)
+    #    ##c = zabs[:,count] >= z[:, t] - z[:, t+1]
+    #    ##constraints.append(c)
+    #    ##c = zabs[:,count] >= z[:, t+1] - z[:, t]
+    #    ##constraints.append(c)
+    #    #c = z[:, t] + z[:, t+1] == dmax[count]
+    #    #constraints.append(c)
+    #    #c = zabs[:,count] == dmax[count]
+    #    #constraints.append(c)
+    #    #count += 1
+
 
     # structure of d and z
     for t in range(1, n_nodes):  # except root
@@ -129,7 +172,10 @@ def qp(X, y, A, b, d_scores, alpha=1.0, boolean=False, regularize=False):
 
         for m in ancestor_l[t]:
             obj += cx.sum((b[m] - XA[:,m]) * z[:, t])
-    
+    #for t in possible_split_nodes:
+    #    obj += cx.sum((XA[:, t] - b[t])*z[:, descendent_r[t]])
+    #    obj += cx.sum((b[t] - XA[:, t])*z[:, descendent_l[t]])
+    #obj += 1000*cx.sum(zabs) 
     obj = (1.0/(n_nodes*n))*obj
 
     if regularize:
@@ -146,7 +192,19 @@ def qp(X, y, A, b, d_scores, alpha=1.0, boolean=False, regularize=False):
         print(np.rint(z.value))
         print('d_round')
         print(np.rint(d.value))
+    import pdb
+    pdb.set_trace()
     return z.value, d.value
+
+def comp_obj(z, x, A, b, n_nodes, ancestor_r, ancestor_l):
+    obj = 0
+    for t in range(n_nodes):#possible_split_nodes:
+        for m in ancestor_r[t]:
+            obj += (np.dot(x,A[m]) - b[m]) * z[t]
+
+        for m in ancestor_l[t]:
+            obj += (b[m] - np.dot(x,A[m])) * z[t]
+    return obj
 
 
 def main():
