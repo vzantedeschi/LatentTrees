@@ -16,6 +16,22 @@ def solve(eta, box=False):
     return d.value.round(3)
 
 
+def solve2(eta, box=False):
+    parent = [None, 0, 0, 1, 1, 2, 2]
+    n = len(eta)
+    d = cx.Variable(n)
+    obj = .5 * cx.sum_squares(d + eta)
+    constr = [d[i] <= d[parent[i]] for i in range(1, n)]
+
+    if box:
+        constr.append(d >= 0)
+        constr.append(d <= 1)
+
+    prob = cx.Problem(cx.Minimize(obj), constr)
+    prob.solve()
+    return d.value.round(3)
+
+
 # not fully worked out
 def closed_form(eta):
 
@@ -58,6 +74,15 @@ def main():
     print(np.clip(d, a_min=0, a_max=1))
 
 
+def wip():
+    eta = np.array([0, -1, 0, .1, -.1, 0, -2], dtype=np.double)
+    print(solve2(eta, box=True))
+
+    eta = np.array([0, -1, 0, .1, -.1, 0, -0.5], dtype=np.double)
+    print(solve2(eta, box=True))
+
+
 if __name__ == '__main__':
     main()
+    # wip()
 
