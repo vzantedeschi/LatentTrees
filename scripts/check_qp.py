@@ -102,7 +102,7 @@ def qp(X, y, A, b, d_scores, alpha=1.0, boolean=False, regularize=False):
         for m in ancestor_r[t]:
             c = (XA[:, m] >= b[m] - 1 + z[:, t])# - (1-d[m]))
             constraints.append(c)
-    
+
         for m in ancestor_l[t]:
             #c = ((XA[:, m] + epsA[m]) <= b[t] + (1 + eps_max) * (1 - z[:, t]))
             c = ((XAmu[:, m]) <= b[m] + (1 + mu) * (1 - z[:, t]))
@@ -160,7 +160,7 @@ def qp(X, y, A, b, d_scores, alpha=1.0, boolean=False, regularize=False):
 
     c = z[:,0] == 1.0
     constraints.append(c)
-    
+
     c = d[0] == 1.0
     constraints.append(c)
 
@@ -175,7 +175,7 @@ def qp(X, y, A, b, d_scores, alpha=1.0, boolean=False, regularize=False):
     #for t in possible_split_nodes:
     #    obj += cx.sum((XA[:, t] - b[t])*z[:, descendent_r[t]])
     #    obj += cx.sum((b[t] - XA[:, t])*z[:, descendent_l[t]])
-    #obj += 1000*cx.sum(zabs) 
+    #obj += 1000*cx.sum(zabs)
     obj = (1.0/(n_nodes*n))*obj
 
     if regularize:
@@ -192,8 +192,8 @@ def qp(X, y, A, b, d_scores, alpha=1.0, boolean=False, regularize=False):
         print(np.rint(z.value))
         print('d_round')
         print(np.rint(d.value))
-    import pdb
-    pdb.set_trace()
+    # import pdb
+    # pdb.set_trace()
     return z.value, d.value
 
 def comp_obj(z, x, A, b, n_nodes, ancestor_r, ancestor_l):
