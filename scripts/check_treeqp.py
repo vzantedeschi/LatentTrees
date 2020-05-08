@@ -81,6 +81,39 @@ def print_as_tree(d):
 
 
 def deep_closed_form(eta, verbose=False):
+
+    d = -eta
+    n = len(d)
+    parent = [None, 0, 0, 1, 1, 2, 2]
+    coloring = np.arange(n)
+
+    while True:
+        max_violation = 0
+        max_violation_ix = None
+
+        for t in range(1, n):
+            violation = max(d[t] - d[parent[t]], 0)
+            if violation > max_violation:
+                max_violation = violation
+                max_violation_ix = t
+
+        if max_violation == 0:
+            # no more violations, we are done
+            break
+
+        # fix the worst violation
+        t = max_violation_ix
+        p = parent[t]
+        pc = coloring[p]
+        coloring[coloring == t] = pc
+        d[coloring == pc] = np.mean(-eta[coloring == pc])
+        if verbose:
+            print("joining", t, p, d)
+
+    return d
+
+
+def deep_closed_form_(eta, verbose=False):
     coloring = np.arange(len(eta))
     parent = [None, 0, 0, 1, 1, 2, 2]
     sibling = [None, 2, 1, 4, 3, 6, 5]
@@ -163,7 +196,7 @@ def wip():
     print()
 
     rng = np.random.RandomState(42)
-    for _ in range(100):
+    for _ in range(1000):
         eta = rng.randn(7)
         eta /= np.sqrt(np.sum(eta ** 2))
 
