@@ -6,13 +6,14 @@ from matplotlib.colors import LinearSegmentedColormap
 
 from src.datasets import toy_dataset
 from src.optimization import train_batch
+# from src.trees import str_as_bst
 from src.utils import make_directory
 
 DISTR = "xor"
 N = 1000
-TREE_DEPTH = 3
+TREE_DEPTH = 2
 LR = 0.1
-ITER = 2e4
+ITER = 1e4
 SAVE_DIR = "./results/"
 
 SEED = 2020
@@ -39,7 +40,8 @@ xx, yy = np.meshgrid(np.arange(x1_min, x1_max, H), np.arange(x2_min, x2_max, H))
 test_x = np.c_[xx.ravel(), yy.ravel()]
 t_x = torch.from_numpy(test_x).float()
 
-x = torch.cat((t_x, torch.ones((len(t_x), 1))), 1)
+# x = torch.cat((t_x, torch.ones((len(t_x), 1))), 1)
+# print(str_as_bst(model.sparseMAP(x).detach().numpy()[0]))
 
 y_pred = model.predict(t_x).numpy()
 y_pred = y_pred.reshape(xx.shape)

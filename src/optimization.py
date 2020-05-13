@@ -66,9 +66,15 @@ class LPSparseMAP(torch.nn.Module):
         XA = torch.mm(x, self.A.T)
 
         q = torch.ones((len(x), self.bst.nb_nodes))
-
+        
+        # trick to avoid inplace operations involving A
         q[:, self.bst.desc_left] = torch.min(q[:, self.bst.split_nodes], XA[:, self.bst.split_nodes])
         q[:, self.bst.desc_right] = torch.min(q[:, self.bst.split_nodes], -XA[:, self.bst.split_nodes])
+
+        # upper bound children's q to parent's q
+        for _ in range(self.bst.depth):
+            q[:, self.bst.desc_left] = torch.min(q[:, self.bst.desc_left], q[:, self.bst.split_nodes])
+            q[:, self.bst.desc_right] = torch.min(q[:, self.bst.desc_right], q[:, self.bst.split_nodes])
 
         return q
 

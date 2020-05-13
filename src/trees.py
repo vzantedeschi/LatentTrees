@@ -30,7 +30,7 @@ class BinarySearchTree():
         self.desc_right = range(2, self.nb_nodes, 2)
 
     def __str__(self):
-        return bst_to_string(self.nodes)
+        return str_as_bst(self.nodes)
 
     def predict(self, z):
         """ each leaf corresponds to a class """
@@ -39,16 +39,16 @@ class BinarySearchTree():
 
         return labels
 
-def bst_to_string(nodes):
+def str_as_bst(nodes):
 
     depth = int((len(nodes) + 1) ** 0.5)
     lines = []
 
     # compute last line first to fix line width
-    lines = [str(reduce(lambda n1, n2: str(n1).zfill(2) + " " + str(n2).zfill(2), nodes[2**(depth - 1) - 1: 2**depth - 1]))]
+    lines = [str(reduce(lambda n1, n2: str(n1).zfill(2) + " " + str(n2).zfill(2), nodes[2**depth - 1: 2**(depth + 1) - 1]))]
     len_lines = len(lines[0])
 
-    for h in range(1, depth):
+    for h in range(depth):
 
         spacing = max(1, int(len_lines / (2**(depth - h - 1))) - 1)
 
