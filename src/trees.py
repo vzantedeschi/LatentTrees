@@ -30,7 +30,7 @@ class BinarySearchTree():
         self.desc_right = range(2, self.nb_nodes, 2)
 
     def __str__(self):
-        return bst_to_string(self.nodes)
+        return str_as_bst(self.nodes)
 
     def predict(self, z):
         """ each leaf corresponds to a class """
@@ -39,7 +39,7 @@ class BinarySearchTree():
 
         return labels
 
-def bst_to_string(nodes):
+def str_as_bst(nodes):
 
     depth = int((len(nodes) + 1) ** 0.5)
     lines = []

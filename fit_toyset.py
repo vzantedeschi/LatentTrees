@@ -6,7 +6,7 @@ from matplotlib.colors import LinearSegmentedColormap
 
 from src.datasets import toy_dataset
 from src.optimization import train_batch
-# from src.trees import bst_to_string
+# from src.trees import str_as_bst
 from src.utils import make_directory
 
 DISTR = "xor"
@@ -41,7 +41,7 @@ test_x = np.c_[xx.ravel(), yy.ravel()]
 t_x = torch.from_numpy(test_x).float()
 
 # x = torch.cat((t_x, torch.ones((len(t_x), 1))), 1)
-# print(bst_to_string(model.sparseMAP(x).detach().numpy()[0]))
+# print(str_as_bst(model.sparseMAP(x).detach().numpy()[0]))
 
 y_pred = model.predict(t_x).numpy()
 y_pred = y_pred.reshape(xx.shape)
