@@ -163,10 +163,10 @@ def main():
     for eta in etas:
 
         print("\neta", eta)
-        print(closed_form(eta, qs, verbose=False))
+        print(closed_form(eta, eta[None,], verbose=False))
         print(noq_closed_form(eta))
 
-    for _ in range(1000):
+    for _ in range(10000):
         eta = np.random.uniform(-3, 3, size = (7))
 
         d_expected = noq_closed_form(eta)
@@ -175,7 +175,7 @@ def main():
         if not np.allclose(d_expected, d_obtained):
             print()
             print("eta", eta)
-            d_obtained = closed_form(eta, qs, verbose=True)
+            d_obtained = closed_form(eta, eta[None,], verbose=True)
             print(d_expected, np.sum((d_expected - eta) ** 2))
             print(d_obtained, np.sum((d_obtained - eta) ** 2))
             # print_as_tree(d_obtained)
