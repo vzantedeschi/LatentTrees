@@ -143,23 +143,30 @@ def main():
     SEED = 2020
     np.random.seed(SEED)
 
-    eta = np.array([1, -1, 0, 1, 3, -0.1, 0.1], dtype=np.double)
-    qs = np.random.uniform(size = (10, 7))
-
-    print("eta", eta)
+    qs = np.random.uniform(0, 1, size = (10, 7))
     print("qs", qs)
 
-    print()
+    etas = np.array([[1, -1, 0, 1, 2, -0.1, 0.3], [0, -1, 0, 1, 2, -0.1, 0.3], [0]*7, [1, 1, 0, 0, 0, 0, 0]])
 
-    closed_form(eta, qs, verbose=True)
-    # solve_qp(eta, qs)
+    for eta in etas:
+
+        print("\neta", eta)
+
+        closed_form(eta, qs, verbose=True)
+        # solve_qp(eta, qs)
+
+        print()
 
     print("\ncheck with no qs")
     qs = np.zeros((1, 7))
-    print(closed_form(eta, qs, verbose=False))
-    print(noq_closed_form(eta))
 
-    for _ in range(100):
+    for eta in etas:
+
+        print("\neta", eta)
+        print(closed_form(eta, qs, verbose=False))
+        print(noq_closed_form(eta))
+
+    for _ in range(1000):
         eta = np.random.uniform(-3, 3, size = (7))
 
         d_expected = noq_closed_form(eta)
