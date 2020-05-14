@@ -148,6 +148,11 @@ def main():
     np.random.seed(SEED)
 
     qs = np.random.uniform(0, 1, size = (10, 7))
+
+    parent = [None, 0, 0, 1, 1, 2, 2]
+    for t in range(1, 7):
+        qs[:, t] = np.minimum(qs[:, t], qs[:, parent[t]])
+
     print("qs", qs)
 
     etas = np.array([[1, -1, 0, 1, 2, -0.1, 0.3], [0, -1, 0, 1, 2, -0.1, 0.3], [0]*7, [1, 1, 0, 0, 0, 0, 0]])
@@ -156,8 +161,8 @@ def main():
 
         print("\neta", eta)
 
-        closed_form(eta, qs, verbose=True)
         print(solve_qp(eta, qs, box=True))
+        closed_form(eta, qs, verbose=True)
 
         print()
 
@@ -171,10 +176,10 @@ def main():
         print(noq_closed_form(eta))
         print(solve_qp(eta, qs, box=True))
 
-    for _ in range(1):
+    for _ in range(10):
         eta = np.random.uniform(-3, 3, size = (7))
 
-        d_expected = noq_closed_form(eta)
+        d_expected = solve_qp(eta, qs, box=True)
         d_obtained = closed_form(eta, qs)
 
         if not np.allclose(d_expected, d_obtained):
