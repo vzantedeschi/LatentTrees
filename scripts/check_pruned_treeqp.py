@@ -117,22 +117,26 @@ def noq_closed_form(eta, verbose=False):
 
     return np.clip(d, 0, 1)
 
-# def solve_qp(eta, qs, box=False):
-#     parent = [None, 0, 0, 1, 1, 2, 2]
-#     N, T = qs.shape
+def solve_qp(eta, qs, box=False):
+    parent = [None, 0, 0, 1, 1, 2, 2]
+    N, T = qs.shape
 
-#     d = cx.Variable(eta.shape)
+    d = cx.Variable(eta.shape)
+    z = cx.Variable(qs.shape)
 
-#     obj = .5 * cx.sum_squares(d - eta)
+    obj = .5 * cx.sum_squares(d - eta)
+    obj += .5 * cx.sum_squares(z - qs)
 
-#     violations = cx.transforms.indicator([qs[i] >= d for i in range(N)])
-#     obj += .5 * cx.sum_squares([(d - qs[i])**2 for i in range(N)])
+    constr = [d[i] <= d[parent[i]] for i in range(1, T)]
+    constr += [z[i] <= d for i in range(N)]
 
-#     constr = [d[i] <= d[parent[i]] for i in range(1, T)]
+    if box:
+        constr += [d >= 0, d <= 1, z >= 0, z <= 1]
 
-#     prob = cx.Problem(cx.Minimize(obj), constr)
-#     prob.solve()
-#     return d.value
+    prob = cx.Problem(cx.Minimize(obj), constr)
+    prob.solve()
+
+    return d.value
 
 def print_as_tree(d):
     print(d[0])
@@ -153,7 +157,7 @@ def main():
         print("\neta", eta)
 
         closed_form(eta, qs, verbose=True)
-        # solve_qp(eta, qs)
+        print(solve_qp(eta, qs, box=True))
 
         print()
 
@@ -165,8 +169,9 @@ def main():
         print("\neta", eta)
         print(closed_form(eta, eta[None,], verbose=False))
         print(noq_closed_form(eta))
+        print(solve_qp(eta, qs, box=True))
 
-    for _ in range(10000):
+    for _ in range(1):
         eta = np.random.uniform(-3, 3, size = (7))
 
         d_expected = noq_closed_form(eta)
