@@ -144,7 +144,7 @@ def main():
     np.random.seed(SEED)
 
     eta = np.array([1, -1, 0, 1, 3, -0.1, 0.1], dtype=np.double)
-    qs = np.random.uniform(size = (2, 7))
+    qs = np.random.uniform(size = (10, 7))
 
     print("eta", eta)
     print("qs", qs)
@@ -159,7 +159,7 @@ def main():
     print(closed_form(eta, qs, verbose=False))
     print(noq_closed_form(eta))
 
-    for _ in range(10000):
+    for _ in range(100):
         eta = np.random.uniform(-3, 3, size = (7))
 
         d_expected = noq_closed_form(eta)
