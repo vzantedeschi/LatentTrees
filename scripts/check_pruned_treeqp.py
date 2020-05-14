@@ -159,20 +159,20 @@ def main():
     print(closed_form(eta, qs, verbose=False))
     print(noq_closed_form(eta))
 
-    # for _ in range(10000):
-    #     eta = np.random.uniform(-3, 3, size = (7))
+    for _ in range(10000):
+        eta = np.random.uniform(-3, 3, size = (7))
 
-    #     d_expected = noq_closed_form(eta)
-    #     d_obtained = closed_form(eta, qs)
+        d_expected = noq_closed_form(eta)
+        d_obtained = closed_form(eta, qs)
 
-    #     if not np.allclose(d_expected, d_obtained):
-    #         print()
-    #         print("eta", eta)
-    #         d_obtained = closed_form(eta, qs, verbose=True)
-    #         print(d_expected, np.sum((d_expected - eta) ** 2))
-    #         print(d_obtained, np.sum((d_obtained - eta) ** 2))
-    #         # print_as_tree(d_obtained)
-    #         print()
+        if not np.allclose(d_expected, d_obtained):
+            print()
+            print("eta", eta)
+            d_obtained = closed_form(eta, qs, verbose=True)
+            print(d_expected, np.sum((d_expected - eta) ** 2))
+            print(d_obtained, np.sum((d_obtained - eta) ** 2))
+            # print_as_tree(d_obtained)
+            print()
 
 
 if __name__ == '__main__':
