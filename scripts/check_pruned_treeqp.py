@@ -8,41 +8,43 @@ def closed_form_1D(eta, qs):
     qs_srt = qs_gtr[ix]
 
     d = eta
-    
-    k = 0
     for k in range(len(qs_srt)):
         if d > qs_srt[k]:
-            k += 1
             break
-
-    topk = qs_srt[:k]
-    d = (eta + np.sum(topk)) / (k + 1)
+        topk = qs_srt[:k + 1]
+        d = (eta + np.sum(topk)) / (k + 2)
     
     return d
 
-def closed_form_colored(d, eta, qs):
+def closed_form_colored(eta, qs):
 
     topk = 0
     nb_k = 0
-    for d_t, q_t in zip():
 
-        qs_gtr = q_t[q_t >= d_t]
+    d = np.mean(eta)
+
+    qs_srt = []
+    for t in range(qs.shape[1]):
+
+        qs_gtr = qs[qs[:, t] >= d, t]
+
         ix = np.argsort(qs_gtr)[::-1]
-        qs_srt = qs_gtr[ix]
-        
-        for k in range(len(qs_srt)):
-            if d_t > qs_srt[k]:
-                break
-                
-            topk += qs_srt[k]
-            nb_k += 1
+        qs_srt.append(qs_gtr[ix])
 
-    new_d = (np.sum(eta) + np.sum(topk)) / (len(eta) + nb_k)
+    qs_srt = sorted(np.hstack(qs_srt))[::-1]
+
+    for k in range(len(qs_srt)):
+        if d > qs_srt[k]:
+            break
+            
+        topk += qs_srt[k]
+        nb_k += 1
+
+        d = (np.sum(eta) + np.sum(topk)) / (len(eta) + nb_k)
     
-    return new_d
+    return d
 
 def closed_form(eta, qs, verbose=False):
-
     d = eta.copy()
     n = len(d)
 
@@ -75,11 +77,12 @@ def closed_form(eta, qs, verbose=False):
         coloring[coloring == t] = pc
 
         pc_ix = (coloring == pc)
-        d[pc_ix] = closed_form_colored(d[pc_ix], eta[pc_ix], qs[:, pc_ix])
+        d[pc_ix] = closed_form_colored(eta[pc_ix], qs[:, pc_ix])
         if verbose:
             print("joining", t, p, d)
 
-    return np.clip(d, 0, 1)
+    # return np.clip(d, 0, 1)
+    return d
 
 def noq_closed_form(eta, verbose=False):
 
@@ -115,7 +118,8 @@ def noq_closed_form(eta, verbose=False):
         if verbose:
             print("joining", t, p, d)
 
-    return np.clip(d, 0, 1)
+    # return np.clip(d, 0, 1)
+    return d
 
 def solve_qp(eta, qs, box=False):
     parent = [None, 0, 0, 1, 1, 2, 2]
@@ -147,39 +151,40 @@ def main():
     SEED = 2020
     np.random.seed(SEED)
 
+    etas = np.array([[1, -1, 0, 1, 2, -0.1, 0.3], [0, -1, 0, 1, 2, -0.1, 0.3], [0]*7, [1, 1, 0, 0, 0, 0, 0]])
+
+    print("check qs = 0")
+    qs = np.zeros((1, 7))
+
+    for eta in etas:
+
+        print("\neta", eta)
+        print(closed_form(eta, qs, verbose=False))
+        print(noq_closed_form(eta))
+        print(solve_qp(eta, qs, box=True))
+
     qs = np.random.uniform(0, 1, size = (10, 7))
 
     parent = [None, 0, 0, 1, 1, 2, 2]
     for t in range(1, 7):
         qs[:, t] = np.minimum(qs[:, t], qs[:, parent[t]])
 
-    print("qs", qs)
-
-    etas = np.array([[1, -1, 0, 1, 2, -0.1, 0.3], [0, -1, 0, 1, 2, -0.1, 0.3], [0]*7, [1, 1, 0, 0, 0, 0, 0]])
+    print("\ncheck with qs", qs)
 
     for eta in etas:
 
         print("\neta", eta)
 
         print(solve_qp(eta, qs, box=True))
-        closed_form(eta, qs, verbose=True)
+        print(closed_form(eta, qs, verbose=True))
 
         print()
 
-    print("\ncheck with no qs")
-    qs = np.zeros((1, 7))
-
-    for eta in etas:
-
-        print("\neta", eta)
-        print(closed_form(eta, eta[None,], verbose=False))
-        print(noq_closed_form(eta))
-        print(solve_qp(eta, qs, box=True))
-
-    for _ in range(10):
+    print("checking random cases...")
+    for _ in range(1000):
         eta = np.random.uniform(-3, 3, size = (7))
 
-        d_expected = solve_qp(eta, qs, box=True)
+        d_expected = solve_qp(eta, qs, box=False)
         d_obtained = closed_form(eta, qs)
 
         if not np.allclose(d_expected, d_obtained):
