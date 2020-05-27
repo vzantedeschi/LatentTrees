@@ -11,8 +11,7 @@ def closed_form_1D(eta, qs):
     for k in range(len(qs_srt)):
         if d > qs_srt[k]:
             break
-        topk = qs_srt[:k + 1]
-        d = (eta + np.sum(topk)) / (k + 2)
+        d = (eta + np.sum(qs_srt[:k + 1])) / (k + 2)
     
     return d
 
@@ -54,6 +53,9 @@ def closed_form(eta, qs, verbose=False):
     for t, e in enumerate(eta):
 
         d[t] = closed_form_1D(e, qs[:, t]) 
+
+    if verbose:
+        print("init", d)
 
     while True:
         max_violating_d = -np.inf
@@ -163,7 +165,7 @@ def main():
         print(noq_closed_form(eta))
         print(solve_qp(eta, qs, box=True))
 
-    qs = np.random.uniform(0, 1, size = (10, 7))
+    qs = np.random.uniform(-1, 1, size = (3, 7))
 
     parent = [None, 0, 0, 1, 1, 2, 2]
     for t in range(1, 7):
@@ -180,21 +182,29 @@ def main():
 
         print()
 
-    print("checking random cases...")
-    for _ in range(1000):
-        eta = np.random.uniform(-3, 3, size = (7))
+    NB_CASES = 1000
+    passed = 0
+    print("checking {} random cases...".format(NB_CASES))
+    for _ in range(NB_CASES):
+        eta = np.random.uniform(-3, 3, size=7)
 
         d_expected = solve_qp(eta, qs, box=False)
-        d_obtained = closed_form(eta, qs)
+        d_obtained = closed_form(eta, qs, verbose=False)
 
         if not np.allclose(d_expected, d_obtained):
             print()
             print("eta", eta)
-            d_obtained = closed_form(eta, eta[None,], verbose=True)
-            print(d_expected, np.sum((d_expected - eta) ** 2))
-            print(d_obtained, np.sum((d_obtained - eta) ** 2))
-            # print_as_tree(d_obtained)
+            print("qs", qs)
+            d_obtained = closed_form(eta, qs, verbose=True)
+            
+            print(d_expected, np.sum((d_expected - eta) ** 2) + np.sum((qs - np.clip(qs, 0, d_expected)) ** 2))
+            print(d_obtained, np.sum((d_obtained - eta) ** 2) + np.sum((qs - np.clip(qs, 0, d_obtained)) ** 2))
+
             print()
+        else:
+            passed += 1
+
+    print("{} over {} cases passes".format(passed, NB_CASES))
 
 
 if __name__ == '__main__':
