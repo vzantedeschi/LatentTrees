@@ -165,7 +165,7 @@ def main():
         print(noq_closed_form(eta))
         print(solve_qp(eta, qs, box=True))
 
-    qs = np.random.uniform(-1, 1, size = (3, 7))
+    qs = np.random.uniform(-1, 1, size = (10, 7))
 
     parent = [None, 0, 0, 1, 1, 2, 2]
     for t in range(1, 7):
