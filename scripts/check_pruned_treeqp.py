@@ -83,8 +83,8 @@ def closed_form(eta, qs, verbose=False):
         if verbose:
             print("joining", t, p, d)
 
-    # return np.clip(d, 0, 1)
-    return d
+    return np.clip(d, 0, 1)
+    # return d
 
 def noq_closed_form(eta, verbose=False):
 
@@ -120,8 +120,8 @@ def noq_closed_form(eta, verbose=False):
         if verbose:
             print("joining", t, p, d)
 
-    # return np.clip(d, 0, 1)
-    return d
+    return np.clip(d, 0, 1)
+    # return d
 
 def solve_qp(eta, qs, box=False):
     parent = [None, 0, 0, 1, 1, 2, 2]
@@ -188,10 +188,10 @@ def main():
     for _ in range(NB_CASES):
         eta = np.random.uniform(-3, 3, size=7)
 
-        d_expected = solve_qp(eta, qs, box=False)
+        d_expected = solve_qp(eta, qs, box=True)
         d_obtained = closed_form(eta, qs, verbose=False)
 
-        if not np.allclose(d_expected, d_obtained):
+        if not np.allclose(d_expected, d_obtained, atol=1e-4):
             print()
             print("eta", eta)
             print("qs", qs)
