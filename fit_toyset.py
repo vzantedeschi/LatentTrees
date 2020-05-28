@@ -10,10 +10,10 @@ from src.optimization import train_batch
 from src.utils import make_directory
 
 DISTR = "xor"
-N = 1000
-TREE_DEPTH = 2
+N = 100
+TREE_DEPTH = 4
 LR = 0.1
-ITER = 1e4
+ITER = 1e3
 SAVE_DIR = "./results/"
 
 SEED = 2020

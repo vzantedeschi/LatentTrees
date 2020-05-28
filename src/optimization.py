@@ -245,7 +245,7 @@ class LinearRegressor(torch.nn.Module):
         self.sparseMAP.train()
         self.predictor.train()
 
-def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, pruning=True):
+def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, pruning=True, reg=1e-3):
 
     n, d = x.shape
 
@@ -266,16 +266,19 @@ def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, pruning=True):
     pbar = tqdm(range(int(nb_iter)))
     for i in pbar:
 
+        # print(model.sparseMAP.eta.detach().numpy())
         optimizer.zero_grad()
 
         y_pred = model(t_x)
 
         loss = criterion(y_pred, t_y)
+        if pruning:
+            loss += reg * torch.norm(model.sparseMAP.eta, p=1)
 
         loss.backward()
         
         optimizer.step()
 
-        pbar.set_description("BCE train loss %s" % loss.detach().numpy())
+        pbar.set_description("BCE + L1 train loss %s" % loss.detach().numpy())
 
     return model
