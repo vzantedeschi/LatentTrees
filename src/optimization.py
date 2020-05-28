@@ -5,6 +5,7 @@ from tqdm import tqdm
 import torch
 
 from src.trees import BinarySearchTree
+from src.monitors import MonitorTree
 
 # ----------------------------------------------------------------------- LINEAR REGRESSION
 
@@ -55,9 +56,9 @@ class LPSparseMAP(torch.nn.Module):
         
         if self.pruned:
 
-            d = self._compute_d(q)
+            self.d = self._compute_d(q)
             z = torch.clamp(q, 0, 1)
-            z = torch.min(z, d)
+            z = torch.min(z, self.d)
 
         else:
             z = torch.clamp(q, 0, 1)
@@ -250,6 +251,7 @@ def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, pruning=True, reg=1e-3)
     n, d = x.shape
 
     model = BinaryClassifier(bst_depth, d + 1, pruned=pruning)
+    monitor = MonitorTree(pruning)
 
     # init optimizer
     optimizer = torch.optim.SGD(model.parameters(), lr=lr)
@@ -280,5 +282,6 @@ def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, pruning=True, reg=1e-3)
         optimizer.step()
 
         pbar.set_description("BCE + L1 train loss %s" % loss.detach().numpy())
+        monitor.write(model, x, i)
 
     return model
