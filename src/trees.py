@@ -32,6 +32,13 @@ class BinarySearchTree():
     def __str__(self):
         return str_as_bst(self.nodes)
 
+    def parent(self, n):
+        
+        if n == 0 or n >= self.nb_nodes:
+            return None
+
+        return (n - 1) // 2
+
     def predict(self, z):
         """ each leaf corresponds to a class """
 
