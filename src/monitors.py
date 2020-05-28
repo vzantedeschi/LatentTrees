@@ -4,14 +4,14 @@ from tensorboardX import SummaryWriter
 
 class MonitorTree():
 
-    def __init__(self, pruning=True):
+    def __init__(self, pruning, logdir=None):
 
         super(MonitorTree, self).__init__()
 
-        self.writer = SummaryWriter()
+        self.writer = SummaryWriter(logdir)
         self.pruning = pruning
 
-    def write(self, model, x, it):
+    def write(self, model, it, **metrics):
 
         if self.pruning:
 
@@ -28,6 +28,7 @@ class MonitorTree():
                  # "d": model.sparseMAP.d,
                  }, it)
 
+        self.writer.add_scalars("train", metrics["train"], it)
         # self.writer.add_graph(model, x)
         # writer.add_scalars('/d_group', 
         #     {"l1": torch.norm(model.sparseMAP.d, p=1), 
