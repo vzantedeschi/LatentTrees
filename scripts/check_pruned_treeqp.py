@@ -26,9 +26,7 @@ def closed_form_colored(eta, qs):
     for t in range(qs.shape[1]):
 
         qs_gtr = qs[qs[:, t] >= d, t]
-
-        ix = np.argsort(qs_gtr)[::-1]
-        qs_srt.append(qs_gtr[ix])
+        qs_srt.append(qs_gtr)
 
     qs_srt = sorted(np.hstack(qs_srt))[::-1]
 
