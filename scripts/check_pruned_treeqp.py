@@ -43,7 +43,7 @@ def closed_form_colored(eta, qs):
     
     return d
 
-def closed_form(eta, qs, verbose=False):
+def closed_form(eta, qs, box=True, verbose=False):
     d = eta.copy()
     n = len(d)
 
@@ -83,10 +83,12 @@ def closed_form(eta, qs, verbose=False):
         if verbose:
             print("joining", t, p, d)
 
-    return np.clip(d, 0, 1)
-    # return d
+    if box:
+        d = np.clip(d, 0, 1)
+    
+    return d
 
-def noq_closed_form(eta, verbose=False):
+def noq_closed_form(eta, box=True, verbose=False):
 
     d = eta.copy()
     n = len(d)
@@ -120,10 +122,12 @@ def noq_closed_form(eta, verbose=False):
         if verbose:
             print("joining", t, p, d)
 
-    return np.clip(d, 0, 1)
-    # return d
+    if box:
+        d = np.clip(d, 0, 1)
+    
+    return d
 
-def solve_qp(eta, qs, box=False):
+def solve_qp(eta, qs, box=True):
     parent = [None, 0, 0, 1, 1, 2, 2]
     N, T = qs.shape
 
@@ -163,7 +167,7 @@ def main():
         print("\neta", eta)
         print(closed_form(eta, qs, verbose=False))
         print(noq_closed_form(eta))
-        print(solve_qp(eta, qs, box=True))
+        print(solve_qp(eta, qs))
 
     qs = np.random.uniform(-1, 1, size = (10, 7))
 
@@ -177,16 +181,51 @@ def main():
 
         print("\neta", eta)
 
-        print(solve_qp(eta, qs, box=True))
+        print(solve_qp(eta, qs))
         print(closed_form(eta, qs, verbose=True))
 
         print()
 
+    from make_edge_cases import make_edge_cases
+
+    etas = make_edge_cases(7)
+    nb_cases = len(etas)
+    print("checking {} edge cases...".format(nb_cases))
+
+    for box in [True, False]:
+
+        passed = 0
+        if box:
+            print("\nwith box constraints")
+        else:
+            print("\nwithout box constraints")
+
+        for eta in etas:
+
+            d_expected = solve_qp(eta, qs, box=box)
+            d_obtained = closed_form(eta, qs, box=box, verbose=False)
+
+            if not np.allclose(d_expected, d_obtained, atol=1e-3):
+                print()
+                print("eta", eta)
+                print("qs", qs)
+                d_obtained = closed_form(eta, qs, box=box, verbose=True)
+                
+                print(d_expected, np.sum((d_expected - eta) ** 2) + np.sum((qs - np.clip(qs, 0, d_expected)) ** 2))
+                print(d_obtained, np.sum((d_obtained - eta) ** 2) + np.sum((qs - np.clip(qs, 0, d_obtained)) ** 2))
+
+                print()
+            else:
+                passed += 1
+
+        print("{} over {} cases passed".format(passed, nb_cases))
+
     NB_CASES = 1000
     passed = 0
-    print("checking {} random cases...".format(NB_CASES))
+    print("\nchecking {} random cases...".format(NB_CASES))
     for _ in range(NB_CASES):
         eta = np.random.uniform(-3, 3, size=7)
+        qs = np.random.uniform(-1, 1, size = (10, 7))
 
         d_expected = solve_qp(eta, qs, box=True)
         d_obtained = closed_form(eta, qs, verbose=False)
@@ -204,7 +243,7 @@ def main():
         else:
             passed += 1
 
-    print("{} over {} cases passes".format(passed, NB_CASES))
+    print("{} over {} cases passed".format(passed, NB_CASES))
 
 
 if __name__ == '__main__':
