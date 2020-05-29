@@ -1,32 +1,16 @@
 import numpy as np
 import cvxpy as cx
 
-def closed_form_1D(eta, qs):
-
-    qs_gtr = qs[qs >= eta]
-    ix = np.argsort(qs_gtr)[::-1]
-    qs_srt = qs_gtr[ix]
-
-    d = eta
-    for k in range(len(qs_srt)):
-        if d > qs_srt[k]:
-            break
-        d = (eta + np.sum(qs_srt[:k + 1])) / (k + 2)
-    
-    return d
-
-def closed_form_colored(eta, qs):
+def closed_form_colored(eta, qs, idx):
 
     topk = 0
     nb_k = 0
 
-    d = np.mean(eta)
-
+    d = np.mean(eta[idx])
     qs_srt = []
-    for t in range(qs.shape[1]):
+    for q_t in qs[:, idx].T:
 
-        qs_gtr = qs[qs[:, t] >= d, t]
-        qs_srt.append(qs_gtr)
+        qs_srt.append(q_t[q_t >= d])
 
     qs_srt = sorted(np.hstack(qs_srt))[::-1]
 
@@ -37,7 +21,7 @@ def closed_form_colored(eta, qs):
         topk += qs_srt[k]
         nb_k += 1
 
-        d = (np.sum(eta) + np.sum(topk)) / (len(eta) + nb_k)
+        d = (np.sum(eta[idx]) + np.sum(topk)) / (len(eta[idx]) + nb_k)
     
     return d
 
@@ -48,9 +32,8 @@ def closed_form(eta, qs, box=True, verbose=False):
     parent = [None, 0, 0, 1, 1, 2, 2]
     coloring = np.arange(n)
 
-    for t, e in enumerate(eta):
-
-        d[t] = closed_form_1D(e, qs[:, t]) 
+    for c in coloring:
+        d[c] = closed_form_colored(eta, qs, [c]) 
 
     if verbose:
         print("init", d)
@@ -77,7 +60,7 @@ def closed_form(eta, qs, box=True, verbose=False):
         coloring[coloring == t] = pc
 
         pc_ix = (coloring == pc)
-        d[pc_ix] = closed_form_colored(eta[pc_ix], qs[:, pc_ix])
+        d[pc_ix] = closed_form_colored(eta, qs, pc_ix)
         if verbose:
             print("joining", t, p, d)
 
