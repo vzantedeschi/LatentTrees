@@ -7,12 +7,11 @@ def closed_form_colored(eta, qs, idx):
     nb_k = 0
 
     d = np.mean(eta[idx])
-    qs_srt = []
-    for q_t in qs[:, idx].T:
 
-        qs_srt.append(q_t[q_t >= d])
+    qs_grt = qs[:, idx].copy()
+    qs_grt = qs_grt[qs_grt >= d].flatten()
 
-    qs_srt = sorted(np.hstack(qs_srt))[::-1]
+    qs_srt = sorted(qs_grt)[::-1]
 
     for k in range(len(qs_srt)):
         if d > qs_srt[k]:
@@ -21,7 +20,7 @@ def closed_form_colored(eta, qs, idx):
         topk += qs_srt[k]
         nb_k += 1
 
-        d = (np.sum(eta[idx]) + np.sum(topk)) / (len(eta[idx]) + nb_k)
+        d = (np.sum(eta[idx]) + topk) / (len(eta[idx]) + nb_k)
     
     return d
 
