@@ -125,7 +125,7 @@ class LPSparseMAP(torch.nn.Module):
             topk += q_sorted[k]
             nb_k += 1
 
-            d = (torch.sum(self.eta[idx]) + topk) / (len(idx) + nb_k)
+            d = (torch.sum(self.eta[idx]) + topk) / (len(self.eta[idx]) + nb_k)
         
         return d
 
