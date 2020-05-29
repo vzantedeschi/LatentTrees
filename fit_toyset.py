@@ -14,6 +14,8 @@ N = 100
 TREE_DEPTH = 4
 LR = 0.1
 ITER = 1e3
+REG = 1
+NORM = 1 # 1, 2 or float('inf')
 SAVE_DIR = "./results/"
 
 SEED = 2020
@@ -24,7 +26,7 @@ torch.manual_seed(SEED)
 X, Y = toy_dataset(N, DISTR)
 
 # train latent class tree and logistic regressor
-model = train_batch(X, Y, bst_depth=TREE_DEPTH, nb_iter=ITER, lr=LR)
+model = train_batch(X, Y, bst_depth=TREE_DEPTH, nb_iter=ITER, lr=LR, reg=REG, norm=NORM)
 
 # define colors (looks good also in printed grey scales)
 colors = [(1, 1, 1), (0.5, 0.5, 1)]

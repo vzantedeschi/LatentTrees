@@ -117,9 +117,8 @@ class LPSparseMAP(torch.nn.Module):
 
         # select qs greater than current d (violating the constraints)
         q_sorted = q[:, idx].clone()
-        q_sorted = q_sorted[q_sorted >= d]
-        q_sorted, _ = torch.sort(q_sorted, descending=True)
-        
+        q_sorted, _ = torch.sort(q_sorted[q_sorted >= d], descending=True)
+
         for k in range(len(q_sorted)):
             if d > q_sorted[k]:
                 break
@@ -245,12 +244,12 @@ class LinearRegressor(torch.nn.Module):
         self.sparseMAP.train()
         self.predictor.train()
 
-def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, pruning=True, reg=1e-2):
+def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, pruning=True, reg=1e-1, norm=1):
 
     n, d = x.shape
 
     model = BinaryClassifier(bst_depth, d + 1, pruned=pruning)
-    monitor = MonitorTree(pruning, "runs/reg={}/".format(reg))
+    monitor = MonitorTree(pruning, "runs/norm={}/reg={}/".format(norm, reg))
 
     # init optimizer
     optimizer = torch.optim.SGD(model.parameters(), lr=lr)
@@ -274,7 +273,7 @@ def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, pruning=True, reg=1e-2)
 
         bce = criterion(y_pred, t_y)
         if pruning:
-            loss = bce + reg * torch.norm(model.sparseMAP.eta, p=1)
+            loss = bce + reg * torch.norm(model.sparseMAP.eta, p=norm)
 
         loss.backward()
         
@@ -282,5 +281,7 @@ def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, pruning=True, reg=1e-2)
 
         pbar.set_description("BCE + L1 train loss %s" % loss.detach().numpy())
         monitor.write(model, i, train={"BCELoss": bce})
+
+    monitor.close()
 
     return model
