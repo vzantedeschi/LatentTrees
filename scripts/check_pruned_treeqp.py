@@ -9,7 +9,7 @@ def closed_form_colored(eta, qs, idx):
     d = np.mean(eta[idx])
 
     qs_grt = qs[:, idx].copy()
-    qs_grt = qs_grt[qs_grt >= d].flatten()
+    qs_grt = qs_grt[qs_grt >= d]
 
     qs_srt = sorted(qs_grt)[::-1]
 

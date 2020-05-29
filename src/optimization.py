@@ -78,7 +78,7 @@ class LPSparseMAP(torch.nn.Module):
         coloring = np.arange(self.bst.nb_nodes)
 
         for c in coloring:
-            d[c] = self._compute_d_colored(q, c) 
+            d[c] = self._compute_d_colored(q, [c]) 
 
         while True:
             max_violating_d = - np.inf
@@ -116,11 +116,10 @@ class LPSparseMAP(torch.nn.Module):
         d = torch.mean(self.eta[idx])
 
         # select qs greater than current d (violating the constraints)
-        q_sorted = []
-        for q_t in q[:, idx].T:
-            q_sorted.append(q_t[q_t >= d])
-
-        q_sorted, _ = torch.sort(torch.cat(q_sorted), descending=True)
+        q_sorted = q[:, idx].clone()
+        q_sorted = q_sorted[q_sorted >= d]
+        q_sorted, _ = torch.sort(q_sorted, descending=True)
+        
         for k in range(len(q_sorted)):
             if d > q_sorted[k]:
                 break
@@ -128,7 +127,7 @@ class LPSparseMAP(torch.nn.Module):
             topk += q_sorted[k]
             nb_k += 1
 
-            d = (torch.sum(self.eta) + torch.sum(topk)) / (len(self.eta) + nb_k)
+            d = (torch.sum(self.eta[idx]) + topk) / (len(idx) + nb_k)
         
         return d
 
