@@ -116,8 +116,7 @@ class LPSparseMAP(torch.nn.Module):
         d = torch.mean(self.eta[idx])
 
         # select qs greater than current d (violating the constraints)
-        q_sorted = q[:, idx].clone()
-        q_sorted, _ = torch.sort(q_sorted[q_sorted >= d], descending=True)
+        q_sorted, _ = torch.sort(q[:, idx][q[:, idx] >= d], descending=True)
 
         for k in range(len(q_sorted)):
             if d > q_sorted[k]:
@@ -279,7 +278,7 @@ def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, pruning=True, reg=1e-1,
         
         optimizer.step()
 
-        pbar.set_description("BCE + L1 train loss %s" % loss.detach().numpy())
+        pbar.set_description("train BCE + reg %s" % loss.detach().numpy())
         monitor.write(model, i, train={"BCELoss": bce})
 
     monitor.close()
