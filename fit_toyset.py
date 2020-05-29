@@ -13,9 +13,9 @@ DISTR = "xor"
 N = 100
 TREE_DEPTH = 4
 LR = 0.1
-ITER = 1e3
+ITER = 1e4
 REG = 1
-NORM = 1 # 1, 2 or float('inf')
+NORM = 1 # 1, 0 or float('inf')
 SAVE_DIR = "./results/"
 
 SEED = 2020
