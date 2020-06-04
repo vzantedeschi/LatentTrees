@@ -265,7 +265,6 @@ def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, pruning=True, reg=1e-1,
     pbar = tqdm(range(int(nb_iter)))
     for i in pbar:
 
-        # print(model.sparseMAP.eta.detach().numpy())
         optimizer.zero_grad()
 
         y_pred = model(t_x)

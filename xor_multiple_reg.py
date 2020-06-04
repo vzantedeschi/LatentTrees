@@ -18,6 +18,7 @@ torch.manual_seed(SEED)
 X, Y = toy_dataset(N, DISTR)
 
 for reg in [10**i for i in range(-2, 2)]:
+
     for norm in [0, 1, float('inf')]:
 
         # train latent class tree and logistic regressor
