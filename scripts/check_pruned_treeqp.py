@@ -13,12 +13,12 @@ def closed_form_colored(eta, qs, idx):
     for k in range(len(qs_srt)):
         if d > qs_srt[k]:
             break
-            
+
         topk += qs_srt[k]
         nb_k += 1
 
         d = (np.sum(eta[idx]) + topk) / (len(eta[idx]) + nb_k)
-    
+
     return d
 
 def closed_form(eta, qs, box=True, verbose=False):
@@ -29,7 +29,7 @@ def closed_form(eta, qs, box=True, verbose=False):
     coloring = np.arange(n)
 
     for c in coloring:
-        d[c] = closed_form_colored(eta, qs, [c]) 
+        d[c] = closed_form_colored(eta, qs, [c])
 
     if verbose:
         print("init", d)
@@ -62,7 +62,7 @@ def closed_form(eta, qs, box=True, verbose=False):
 
     if box:
         d = np.clip(d, 0, 1)
-    
+
     return d
 
 def noq_closed_form(eta, box=True, verbose=False):
@@ -94,14 +94,16 @@ def noq_closed_form(eta, box=True, verbose=False):
         t = max_violating_ix
         p = parent[t]
         pc = coloring[p]
-        coloring[coloring == t] = pc
+        tc = coloring[t]
+        coloring[coloring == tc] = pc
+        # coloring[coloring == t] = pc
         d[coloring == pc] = np.mean(eta[coloring == pc])
         if verbose:
             print("joining", t, p, d)
 
     if box:
         d = np.clip(d, 0, 1)
-    
+
     return d
 
 def solve_qp(eta, qs, box=True):
@@ -187,7 +189,7 @@ def main():
                 print("eta", eta)
                 print("qs", qs)
                 d_obtained = closed_form(eta, qs, box=box, verbose=True)
-                
+
                 print(d_expected, np.sum((d_expected - eta) ** 2) + np.sum((qs - np.clip(qs, 0, d_expected)) ** 2))
                 print(d_obtained, np.sum((d_obtained - eta) ** 2) + np.sum((qs - np.clip(qs, 0, d_obtained)) ** 2))
 
@@ -212,7 +214,7 @@ def main():
             print("eta", eta)
             print("qs", qs)
             d_obtained = closed_form(eta, qs, verbose=True)
-            
+
             print(d_expected, np.sum((d_expected - eta) ** 2) + np.sum((qs - np.clip(qs, 0, d_expected)) ** 2))
             print(d_obtained, np.sum((d_obtained - eta) ** 2) + np.sum((qs - np.clip(qs, 0, d_obtained)) ** 2))
 
