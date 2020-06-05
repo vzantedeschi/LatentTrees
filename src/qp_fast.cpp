@@ -8,7 +8,7 @@ namespace py = pybind11;
 typedef std::vector<std::pair<int, int>> index_vec;
 
 
-std::tuple<float, index_vec> subproblem_init(
+std::tuple<float, int, index_vec> subproblem_init(
     torch::TensorAccessor<float, 1> eta,
     torch::TensorAccessor<float, 2> q,
     torch::TensorAccessor<long, 2> q_srt,
@@ -39,10 +39,10 @@ std::tuple<float, index_vec> subproblem_init(
         selected_indices.push_back(std::make_pair(j, kk));
     }
 
-    return std::make_tuple(dd / denom, selected_indices);
+    return std::make_tuple(dd / denom, denom, selected_indices);
 }
 
-std::tuple<float, index_vec> subproblem(
+std::tuple<float, int, index_vec> subproblem(
     torch::TensorAccessor<float, 1> eta,
     torch::TensorAccessor<float, 2> q,
     torch::TensorAccessor<long, 2> q_srt,
@@ -81,6 +81,7 @@ std::tuple<float, index_vec> subproblem(
         // get largest q among all selected rows
         auto qmax = -std::numeric_limits<float>::infinity();
         auto jjmax = -1;
+        auto jmax = -1;
         auto kkmax = -1;
         for (int jj = 0; jj < n_rows; ++jj) {
             auto j = js[jj];
@@ -95,6 +96,7 @@ std::tuple<float, index_vec> subproblem(
             if (qq > qmax) {
                 qmax = qq;
                 jjmax = jj;
+                jmax = j;
                 kkmax = kk;
             }
         }
@@ -109,13 +111,13 @@ std::tuple<float, index_vec> subproblem(
         dd += qmax;
         denom += 1;
         ks[jjmax] += 1; // advance jth row head
-        selected_indices.push_back(std::make_pair(jjmax, kkmax));
+        selected_indices.push_back(std::make_pair(jmax, kkmax));
     }
-    return std::make_tuple(dd / denom, selected_indices);
+    return std::make_tuple(dd / denom, denom, selected_indices);
 }
 
 
-std::tuple<torch::Tensor, std::vector<long>, std::vector<index_vec>>
+std::tuple<torch::Tensor, std::vector<long>, std::vector<int>, std::vector<index_vec>>
 compute_d_fast(torch::Tensor q, torch::Tensor eta) {
     q = q.t();
     const int n_nodes = q.size(0);
@@ -138,9 +140,11 @@ compute_d_fast(torch::Tensor q, torch::Tensor eta) {
     auto d = eta.clone();
     auto d_acc = d.accessor<float, 1>();
 
+    auto denoms = std::vector<int>(n_nodes);
+
     // solve all nested qps to initialize
     for(int j = 0; j < n_nodes; ++j) {
-        std::tie(d_acc[j], color_to_ix[j]) = subproblem_init(eta_acc, q_acc, q_srt_acc, j);
+        std::tie(d_acc[j], denoms[j], color_to_ix[j]) = subproblem_init(eta_acc, q_acc, q_srt_acc, j);
     }
 
     int n_iter = 0;
@@ -166,9 +170,10 @@ compute_d_fast(torch::Tensor q, torch::Tensor eta) {
         int p = parent(t);
         int pc = color[p];
         int tc = color[t];
-        std::cout << "joining " << t << " into " << p << std::endl;
+        //std::cout << "joining " << t << " into " << p << std::endl;
 
         color_to_ix[tc] = {};
+        denoms[tc] = 0;
 
         for (auto& c : color) {
             if (c == tc)
@@ -177,13 +182,13 @@ compute_d_fast(torch::Tensor q, torch::Tensor eta) {
 
         // update d[color == pc];
         float dcol;
-        std::tie(dcol, color_to_ix[pc]) = subproblem(eta_acc, q_acc, q_srt_acc, color, pc);
+        std::tie(dcol, denoms[pc], color_to_ix[pc]) = subproblem(eta_acc, q_acc, q_srt_acc, color, pc);
         for(int j = 0; j < n_nodes; ++j) {
             if (color[j] == pc)
                 d_acc[j] = dcol;
         }
     }
-    return std::make_tuple(d, color, color_to_ix);
+    return std::make_tuple(d, color, denoms, color_to_ix);
 }
 
 

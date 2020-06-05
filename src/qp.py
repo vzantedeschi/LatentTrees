@@ -6,6 +6,52 @@ from .trees import BinarySearchTree
 from .qp_fast import compute_d_fast
 
 
+class PruningQPFast(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx, q, eta):
+        d, ctx.colors, ctx.denoms, ctx.indices = compute_d_fast(q, eta)
+        ctx.save_for_backward(q, eta)
+        # print("all indices", ctx.indices)
+        return d
+
+    @staticmethod
+    def backward(ctx, grad_d):
+        # we consider the mapping as the composition of two functions f and g
+        # f(q, eta) -> d_colors , with shape (n_unique_colors)
+        # g(d_colors) -> d which copies each color to all joined indices.
+
+        # we first apply the Jacobian of g(d_colors)
+        # by accummulating grad_d for each color.
+        colors = np.array(ctx.colors)
+        color_uniq, color_inv = np.unique(colors, return_inverse=True)
+        n_colors = len(color_uniq)
+        grad_d_colors = torch.zeros(n_colors)
+        grad_d_colors.index_add_(0, torch.LongTensor(color_inv), grad_d)
+
+        # next,
+        # partial d_colors[c] / eta[i] = 1/denom[c] if i has color c, else 0
+        # partial d_colors[c] / q[i,k] = 1/denom[c] if (i,k) in ctx.indices[c]
+        q, eta = ctx.saved_tensors
+        grad_eta = torch.zeros_like(eta)
+        grad_q = torch.zeros_like(q)
+
+        for c in range(n_colors):
+            color = color_uniq[c]  # map back to discontinuous index
+            grad_eta[color_inv == c] += grad_d_colors[c] / ctx.denoms[color]
+
+            rows = [k for _, k in ctx.indices[color]]
+            cols = [i for i, _ in ctx.indices[color]]
+            grad_q[rows, cols] += grad_d_colors[c] / ctx.denoms[color]
+
+        return grad_q, grad_eta
+
+
+def pruning_qp(q, eta):
+    """Pruning QP: fast cpp impl"""
+    return PruningQPFast.apply(q, eta)
+
+
 class LatentDT(torch.nn.Module):
 
     def __init__(self, bst_depth, dim, pruned=True):
@@ -27,8 +73,28 @@ class LatentDT(torch.nn.Module):
 
             self.d = d_slow = self._compute_d_slow(q)
             print("d slow", self.d)
-            self.d = d_fast = self._compute_d_fast(q)
+            print("grad", torch.autograd.grad(d_slow[0], q,
+                retain_graph=True))
+            print("grad", torch.autograd.grad(d_slow[1], q,
+                retain_graph=True))
+            # print("grad", torch.autograd.grad(d_slow[0], self.eta,
+                # retain_graph=True))
+            # print("grad", torch.autograd.grad(d_slow[1], self.eta,
+                # retain_graph=True))
+            # print("grad", torch.autograd.grad(d_slow[3], self.eta,
+                # retain_graph=True))
+            self.d = d_fast = pruning_qp(q, self.eta)
             print("d fast", self.d)
+            print("grad", torch.autograd.grad(d_fast[0], q,
+                retain_graph=True))
+            print("grad", torch.autograd.grad(d_fast[1], q,
+                retain_graph=True))
+            # print("grad", torch.autograd.grad(d_fast[0], self.eta,
+                # retain_graph=True))
+            # print("grad", torch.autograd.grad(d_fast[1], self.eta,
+                # retain_graph=True))
+            # print("grad", torch.autograd.grad(d_fast[3], self.eta,
+                # retain_graph=True))
             exit()
             print(torch.norm(d_slow - d_fast).item())
             exit()
@@ -79,7 +145,7 @@ class LatentDT(torch.nn.Module):
             p = self.bst.parent(max_violating_ix)
             pc = coloring[p]
             coloring[coloring == max_violating_ix] = pc
-            print("join ", max_violating_ix, "into", p)
+            # print("join ", max_violating_ix, "into", p)
             # print(coloring)
 
             pc_ix = (coloring == pc)
@@ -108,10 +174,6 @@ class LatentDT(torch.nn.Module):
 
             d = (torch.sum(self.eta[idx]) + topk) / (len(self.eta[idx]) + nb_k)
 
-        return d
-
-    def _compute_d_fast(self, q):
-        d = compute_d_fast(q, self.eta)
         return d
 
     def _compute_q(self, x):
