@@ -10,20 +10,24 @@ class PruningQPFast(torch.autograd.Function):
 
     @staticmethod
     def forward(ctx, q, eta):
-        d, ctx.colors, ctx.denoms, ctx.indices = compute_d_fast(q, eta)
+        d, ctx.state = compute_d_fast(q, eta)
         ctx.save_for_backward(q, eta)
-        # print("all indices", ctx.indices)
         return d
 
     @staticmethod
     def backward(ctx, grad_d):
+
+        colors = ctx.state.color
+        denoms = ctx.state.denoms
+        indices = ctx.state.color_to_ix
+
         # we consider the mapping as the composition of two functions f and g
         # f(q, eta) -> d_colors , with shape (n_unique_colors)
         # g(d_colors) -> d which copies each color to all joined indices.
 
         # we first apply the Jacobian of g(d_colors)
         # by accummulating grad_d for each color.
-        colors = np.array(ctx.colors)
+        colors = np.array(colors)
         color_uniq, color_inv = np.unique(colors, return_inverse=True)
         n_colors = len(color_uniq)
         grad_d_colors = torch.zeros(n_colors)
@@ -31,18 +35,18 @@ class PruningQPFast(torch.autograd.Function):
 
         # next,
         # partial d_colors[c] / eta[i] = 1/denom[c] if i has color c, else 0
-        # partial d_colors[c] / q[i,k] = 1/denom[c] if (i,k) in ctx.indices[c]
+        # partial d_colors[c] / q[i,k] = 1/denom[c] if (i,k) in indices[c]
         q, eta = ctx.saved_tensors
         grad_eta = torch.zeros_like(eta)
         grad_q = torch.zeros_like(q)
 
         for c in range(n_colors):
             color = color_uniq[c]  # map back to discontinuous index
-            grad_eta[color_inv == c] += grad_d_colors[c] / ctx.denoms[color]
+            grad_eta[color_inv == c] += grad_d_colors[c] / denoms[color]
 
-            rows = [k for _, k in ctx.indices[color]]
-            cols = [i for i, _ in ctx.indices[color]]
-            grad_q[rows, cols] += grad_d_colors[c] / ctx.denoms[color]
+            rows = [k for _, k in indices[color]]
+            cols = [i for i, _ in indices[color]]
+            grad_q[rows, cols] += grad_d_colors[c] / denoms[color]
 
         return grad_q, grad_eta
 
