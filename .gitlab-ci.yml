@@ -23,13 +23,11 @@ before_script:
   - pip install virtualenv
   - virtualenv venv
   - source venv/bin/activate
-  - pip install numpy
+  - pip install numpy future pytest
   - pip install torch --no-index -f https://download.pytorch.org/whl/cpu/torch_stable.html
 
 test:
   script:
     - python setup.py build_ext --inplace
-    - pip install tox flake8 pytest
-    - tox -e py36,flake8
     - pytest src/
 
