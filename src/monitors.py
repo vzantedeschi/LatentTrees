@@ -16,17 +16,17 @@ class MonitorTree():
         if self.pruning:
 
             self.writer.add_scalars('variables/eta_group', 
-                {"linf": torch.norm(model.sparseMAP.eta, p=float('inf')),
-                 "l1": torch.norm(model.sparseMAP.eta, p=1), 
-                 "l0": torch.norm(model.sparseMAP.eta, p=0),
-                 # "eta": model.sparseMAP.eta,
+                {"linf": torch.norm(model.latent_tree.eta, p=float('inf')),
+                 "l1": torch.norm(model.latent_tree.eta, p=1), 
+                 "l0": torch.norm(model.latent_tree.eta, p=0),
+                 # "eta": model.latent_tree.eta,
                  }, it)
 
             self.writer.add_scalars('variables/d_group', 
-                {"linf": torch.norm(model.sparseMAP.d, p=float('inf')),
-                 "l1": torch.norm(model.sparseMAP.d, p=1), 
-                 "l0": torch.norm(model.sparseMAP.d, p=0),
-                 # "d": model.sparseMAP.d,
+                {"linf": torch.norm(model.latent_tree.d, p=float('inf')),
+                 "l1": torch.norm(model.latent_tree.d, p=1), 
+                 "l0": torch.norm(model.latent_tree.d, p=0),
+                 # "d": model.latent_tree.d,
                  }, it)
 
         for key, item in metrics.items():

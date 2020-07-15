@@ -6,7 +6,6 @@ from matplotlib.colors import LinearSegmentedColormap
 
 from src.datasets import toy_dataset
 from src.optimization import train_batch
-# from src.trees import str_as_bst
 from src.utils import make_directory
 
 DISTR = "xor"
@@ -14,7 +13,7 @@ N = 100
 TREE_DEPTH = 4
 LR = 0.1
 ITER = 1e4
-REG = 1
+REG = 0.001
 NORM = 1 # 1, 0 or float('inf')
 SAVE_DIR = "./results/"
 
