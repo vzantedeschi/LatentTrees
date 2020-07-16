@@ -14,11 +14,11 @@ from src.utils import make_directory, TorchDataset
 
 SEED = 1337
 DATA_NAME = "YEAR"
-TREE_DEPTH = 1
+TREE_DEPTH = 6
 REG = 0
-LR = 0.001
+LR = 0.1
 BATCH_SIZE = 512 
-EPOCHS = 10
+EPOCHS = 100
 
 save_dir = Path("./results/tab-datasets/") / DATA_NAME / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
 make_directory(save_dir)
