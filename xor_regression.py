@@ -14,17 +14,17 @@ from src.utils import make_directory
 DISTR = "reg-xor"
 N = 1000
 TREE_DEPTH = 2
-LR = 0.2
-ITER = 1e3
-ETA = 0
+LR = 0.1
+ITER = 2e3
+REG = 0
 
-SAVE_DIR = "./results/{}/eta={}/".format(DISTR, ETA)
+SAVE_DIR = "./results/{}/reg={}/".format(DISTR, REG)
 
 SEED = 2020
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 
-pruning = (ETA is not None)
+pruning = REG > 0
 nb_nodes = (2**(TREE_DEPTH + 1) - 1)
 nb_leaves = 2**TREE_DEPTH
 
@@ -34,7 +34,7 @@ monitor = MonitorTree(pruning, SAVE_DIR)
 X, Y, labels = toy_dataset(N, DISTR)
 
 # 3 input features, 1 target value
-model = LTLinearRegressor(TREE_DEPTH, 3, 1, eta=[ETA]*nb_nodes)
+model = LTLinearRegressor(TREE_DEPTH, 3, 1, pruned=pruning)
 
 # init optimizer
 optimizer = torch.optim.SGD(model.parameters(), lr=LR)

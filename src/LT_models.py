@@ -143,12 +143,12 @@ class LTBinaryClassifier(torch.nn.Module):
 
 class LTLinearRegressor(torch.nn.Module):
 
-    def __init__(self, bst_depth, in_size, out_size, eta=None):
+    def __init__(self, bst_depth, in_size, out_size, pruned=True):
 
         super(LTLinearRegressor, self).__init__()
 
         # init latent tree optimizer (x -> z)
-        self.latent_tree = Latent_tree(bst_depth, in_size, eta)
+        self.latent_tree = LatentTree(bst_depth, in_size, pruned)
 
         # init predictor ( [x;z]-> y )
         self.predictor = LinearRegression(in_size + self.latent_tree.bst.nb_nodes, out_size)
