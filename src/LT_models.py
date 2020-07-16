@@ -18,7 +18,7 @@ class LinearRegression(torch.nn.Module):
 
     def forward(self, x):
         
-        return self.linear(x)
+        return self.linear(x).squeeze()
 
 class LogisticRegression(torch.nn.Module):
     
@@ -148,10 +148,10 @@ class LTLinearRegressor(torch.nn.Module):
         super(LTLinearRegressor, self).__init__()
 
         # init latent tree optimizer (x -> z)
-        self.latent_tree = LatentTree(bst_depth, in_size, pruned)
+        self.latent_tree = LatentTree(bst_depth, in_size + 1, pruned)
 
         # init predictor ( [x;z]-> y )
-        self.predictor = LinearRegression(in_size + self.latent_tree.bst.nb_nodes, out_size)
+        self.predictor = LinearRegression(in_size + 1 + self.latent_tree.bst.nb_nodes, out_size)
 
     def eval(self):
         self.latent_tree.eval()

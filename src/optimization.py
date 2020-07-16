@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 
 from tqdm import tqdm
@@ -53,3 +54,62 @@ def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, reg=10, norm="inf"):
     monitor.close()
 
     return model
+
+def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm=float("inf"), monitor=None):
+
+    model.train()
+
+    last_iter = epoch * len(dataloader)
+
+    train_obj = 0.
+    pbar = tqdm(dataloader)
+    for i, batch in enumerate(pbar):
+
+        optimizer.zero_grad()
+
+        t_x, t_y = batch
+
+        y_pred = model(t_x)
+
+        loss = criterion(y_pred, t_y)
+
+        if reg > 0:
+
+            obj = loss + reg * torch.norm(model.latent_tree.eta, p=norm)
+            train_obj += obj.detach().numpy()
+
+            pbar.set_description("avg train loss + reg %f" % (train_obj / (i + 1)))
+
+        else:
+
+            obj = loss
+            train_obj += obj.detach().numpy()
+
+            pbar.set_description("avg train loss %f" % (train_obj / (i + 1)))
+
+        obj.backward()
+
+        optimizer.step()
+
+        if monitor:
+            monitor.write(model, i + last_iter, train={"Loss": loss.detach()})
+
+def evaluate(dataloader, model, criterion, epoch=None, monitor=None):
+
+    model.eval()
+
+    total_loss = 0.
+    
+    for i, batch in enumerate(dataloader):
+
+        t_x, t_y = batch
+
+        y_pred = model(t_x)
+
+        loss = criterion(y_pred, t_y)
+        total_loss += loss.detach()
+
+    if monitor:
+        monitor.write(model, epoch, val={"Loss": total_loss})
+
+    return total_loss.numpy() / i
