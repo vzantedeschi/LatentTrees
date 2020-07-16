@@ -272,13 +272,17 @@ def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, pruning=True, reg=1e-1,
         bce = criterion(y_pred, t_y)
         if pruning:
             loss = bce + reg * torch.norm(model.sparseMAP.eta, p=norm)
+            pbar.set_description("train BCE + reg %s" % loss.detach().numpy())
+
+        else:
+            loss = bce
+            pbar.set_description("train BCE %s" % loss.detach().numpy())
 
         loss.backward()
         
         optimizer.step()
 
-        pbar.set_description("train BCE + reg %s" % loss.detach().numpy())
-        monitor.write(model, i, train={"BCELoss": bce})
+        monitor.write(model, i, train={"BCELoss": bce.detach()})
 
     monitor.close()
 
