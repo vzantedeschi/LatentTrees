@@ -110,6 +110,6 @@ def evaluate(dataloader, model, criterion, epoch=None, monitor=None):
         total_loss += loss.detach()
 
     if monitor:
-        monitor.write(model, epoch, val={"Loss": total_loss})
+        monitor.write(model, epoch, val={"Loss": total_loss / i})
 
     return total_loss.numpy() / i
