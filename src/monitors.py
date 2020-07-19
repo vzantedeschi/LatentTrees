@@ -23,8 +23,8 @@ class MonitorTree():
                  }, it)
 
             self.writer.add_scalars('variables/d_group', 
-                {"linf": torch.norm(model.latent_tree.d, p=float('inf')),
-                 "l1": torch.norm(model.latent_tree.d, p=1), 
+                {#"linf": torch.norm(model.latent_tree.d, p=float('inf')),
+                 #"l1": torch.norm(model.latent_tree.d, p=1), 
                  "l0": torch.norm(model.latent_tree.d, p=0),
                  # "d": model.latent_tree.d,
                  }, it)
