@@ -43,13 +43,12 @@ class LatentTree(torch.nn.Module):
         super(LatentTree, self).__init__()
 
         self.bst = BinarySearchTree(bst_depth)       
-        self.A = torch.nn.Parameter(torch.rand(self.bst.nb_split, dim) * 1e-3)
+        self.A = torch.nn.Parameter(torch.rand(self.bst.nb_split, dim))
         
         self.pruned = pruned
         
         if pruned:
-            self.eta = torch.nn.Parameter(torch.rand(self.bst.nb_nodes) * 1e-3)
-
+            self.eta = torch.nn.Parameter(torch.rand(self.bst.nb_nodes))
 
     def forward(self, x):
 

@@ -7,14 +7,14 @@ from src.LT_models import LTBinaryClassifier
 from src.monitors import MonitorTree
 
 # Train LT Binary Classifier with gradient descent on full dataset
-def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, reg=10, norm="inf"):
+def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, reg=10, norm="inf", root_dir="runs/"):
 
     n, d = x.shape
 
     pruning = reg > 0
     
     model = LTBinaryClassifier(bst_depth, d + 1, pruned=pruning)
-    monitor = MonitorTree(pruning, "runs/norm={}/reg={}/".format(norm, reg))
+    monitor = MonitorTree(pruning, "{}/norm={}/reg={}/".format(root_dir, norm, reg))
 
     # init optimizer
     optimizer = torch.optim.SGD(model.parameters(), lr=lr)
