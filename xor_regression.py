@@ -12,10 +12,10 @@ from src.optimization import train_batch
 from src.utils import make_directory
 
 DISTR = "reg-xor"
-N = 1000
+N = 100
 TREE_DEPTH = 2
 LR = 0.1
-ITER = 2e3
+ITER = 1e3
 REG = 0
 
 SAVE_DIR = "./results/{}/reg={}/".format(DISTR, REG)
@@ -33,8 +33,8 @@ monitor = MonitorTree(pruning, SAVE_DIR)
 # generate toy dataset
 X, Y, labels = toy_dataset(N, DISTR)
 
-# 3 input features, 1 target value
-model = LTLinearRegressor(TREE_DEPTH, 3, 1, pruned=pruning)
+# 2 input features, 1 target value
+model = LTLinearRegressor(TREE_DEPTH, 2, 1, pruned=pruning)
 
 # init optimizer
 optimizer = torch.optim.SGD(model.parameters(), lr=LR)
@@ -74,9 +74,11 @@ for i in pbar:
 
     monitor.write(model, i, train={"MSELoss": loss.detach()})
 
-    # estimate learned class boundaries
-    test_y = model.predict_bst(test_x)
-    test_y = test_y.reshape(xx.shape)
+model.eval()
+
+# estimate learned class boundaries
+test_y = model.predict_bst(test_x)
+test_y = test_y.reshape(xx.shape)
 
 plt.clf()
 # plot class boundaries

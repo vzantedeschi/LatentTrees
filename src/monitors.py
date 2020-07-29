@@ -18,7 +18,7 @@ class MonitorTree():
             self.writer.add_scalars('variables/eta_group', 
                 {"linf": torch.norm(model.latent_tree.eta, p=float('inf')),
                  "l1": torch.norm(model.latent_tree.eta, p=1), 
-                 "l0": torch.norm(model.latent_tree.eta, p=0),
+                 "l0": torch.norm(torch.clamp(model.latent_tree.eta, 0, 1), p=0),
                  # "eta": model.latent_tree.eta,
                  }, it)
 
