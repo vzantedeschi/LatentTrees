@@ -12,10 +12,10 @@ from src.optimization import train_batch
 from src.utils import make_directory
 
 DISTR = "reg-xor"
-N = 100
+N = 1000
 TREE_DEPTH = 2
-LR = 0.1
-ITER = 1e3
+LR = 0.2
+ITER = 1e4
 REG = 0
 
 SAVE_DIR = "./results/{}/reg={}/".format(DISTR, REG)

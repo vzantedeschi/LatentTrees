@@ -18,7 +18,7 @@ class LinearRegression(torch.nn.Module):
 
     def forward(self, x):
         
-        return self.linear(x).squeeze()
+        return self.linear(x)
 
 class LogisticRegression(torch.nn.Module):
     
