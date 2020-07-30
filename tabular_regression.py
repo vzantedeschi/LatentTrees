@@ -26,7 +26,7 @@ make_directory(save_dir)
 pruning = REG > 0
 
 # load dataset with same configuration as in https://github.com/Qwicen/node/blob/master/notebooks/year_node_shallow.ipynb
-data = Dataset(DATA_NAME, random_state=SEED, quantile_transform=True, quantile_noise=1e-3)
+data = Dataset(DATA_NAME, random_state=SEED, quantile_transform=True, quantile_noise=1e-3, normalize=True)
 in_features = data.X_train.shape[1]
 out_features = 1
 
