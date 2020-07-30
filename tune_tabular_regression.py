@@ -4,6 +4,7 @@ from pathlib import Path
 
 from torch.nn import MSELoss
 from torch.optim import SGD
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
 from src.LT_models import LTLinearRegressor
@@ -30,8 +31,8 @@ data.y_train, data.y_valid, data.y_test = map(normalize, [data.y_train, data.y_v
 
 print("mean = %.5f, std = %.5f" % (mu, std))
 
-trainloader = dataloader(torchdataset(data.x_train, data.y_train), batch_size=batch_size, num_workers=-1, shuffle=True)
-valloader = dataloader(torchdataset(data.x_valid, data.y_valid), batch_size=batch_size*2, num_workers=-1,  shuffle=False)
+trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, num_workers=12, shuffle=True)
+valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATCH_SIZE*2, num_workers=12, shuffle=False)
 
 for TREE_DEPTH in [6, 8]:
     for REG in [0] + [10**i for i in range(-3, 4)]:
@@ -43,8 +44,11 @@ for TREE_DEPTH in [6, 8]:
         # init optimizer
         optimizer = SGD(model.parameters(), lr=LR)
 
+        # init learning rate scheduler
+        lr_scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)
+
         # init loss
-        criterion = MSELoss(reduction="mean")
+        criterion = MSELoss(reduction="sum")
 
         # init train-eval monitoring 
         monitor = MonitorTree(pruning, save_dir)
@@ -72,6 +76,9 @@ for TREE_DEPTH in [6, 8]:
                 best_val_loss = min(val_loss, best_val_loss)
                 best_e = e
                 # save_model(model, optimizer, state, save_dir)
+            
+            # reduce learning rate if needed
+            lr_scheduler.step(val_loss)
 
         monitor.close()
         print("DEPTH={}, REG={}, best validation loss (epoch {}): {}, unscaled {}\n".format(TREE_DEPTH, REG, best_e, best_val_loss, best_val_loss * std ** 2))
