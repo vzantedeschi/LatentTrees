@@ -69,7 +69,7 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
 
         t_x, t_y = batch
 
-        y_pred = model(t_x)
+        y_pred = model(t_x).squeeze()
 
         loss = criterion(y_pred, t_y)
 

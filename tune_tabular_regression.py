@@ -14,7 +14,7 @@ from src.utils import make_directory, TorchDataset
 
 SEED = 1337
 DATA_NAME = "YEAR"
-LR = 0.01
+LR = 0.001
 BATCH_SIZE = 512 
 EPOCHS = 100
 
@@ -30,8 +30,8 @@ data.y_train, data.y_valid, data.y_test = map(normalize, [data.y_train, data.y_v
 
 print("mean = %.5f, std = %.5f" % (mu, std))
 
-trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, shuffle=True)
-valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATCH_SIZE*2, shuffle=False)
+trainloader = dataloader(torchdataset(data.x_train, data.y_train), batch_size=batch_size, num_workers=-1, shuffle=True)
+valloader = dataloader(torchdataset(data.x_valid, data.y_valid), batch_size=batch_size*2, num_workers=-1,  shuffle=False)
 
 for TREE_DEPTH in [6, 8]:
     for REG in [0] + [10**i for i in range(-3, 4)]:
