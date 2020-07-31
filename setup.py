@@ -13,7 +13,8 @@ __version__ = '0.0.1'
 extensions = [
     cpp_extension.CppExtension('src.qp_fast',
               ["src/qp_fast.cpp"],
-              language='c++'
+              language='c++',
+              extra_compile_args=['-std=c++17'],
     ),
 ]
 
