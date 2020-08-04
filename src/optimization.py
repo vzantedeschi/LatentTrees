@@ -69,9 +69,9 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
 
         t_x, t_y = batch
 
-        y_pred = model(t_x)
+        y_pred = model(t_x).squeeze()
 
-        loss = criterion(y_pred, t_y)
+        loss = criterion(y_pred, t_y) / len(t_x)
 
         if reg > 0:
 
@@ -100,16 +100,18 @@ def evaluate(dataloader, model, criterion, epoch=None, monitor=None):
 
     total_loss = 0.
     
-    for i, batch in enumerate(dataloader):
+    num_points = 0
+    for batch in dataloader:
 
         t_x, t_y = batch
+        num_points += len(t_x)
 
-        y_pred = model(t_x)
+        y_pred = model(t_x).squeeze()
 
         loss = criterion(y_pred, t_y)
         total_loss += loss.detach()
 
     if monitor:
-        monitor.write(model, epoch, val={"Loss": total_loss / i})
+        monitor.write(model, epoch, val={"Loss": total_loss / num_points})
 
-    return total_loss.numpy() / i
+    return total_loss.numpy() / num_points
