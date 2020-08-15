@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 
 import optuna
 
-from src.LT_models import LTLinearRegressor
+from src.LT_models import LTRegressor
 from src.monitors import MonitorTree
 from src.optimization import train_stochastic, evaluate
 from src.tabular_datasets import Dataset
@@ -20,6 +20,7 @@ DATA_NAME = "YEAR"
 LR = 0.0001
 BATCH_SIZE = 512 
 EPOCHS = 20
+LINEAR = False
 
 # load dataset with same configuration as in https://github.com/Qwicen/node/blob/master/notebooks/year_node_shallow.ipynb
 data = Dataset(DATA_NAME, random_state=SEED, quantile_transform=True, quantile_noise=1e-3, normalize=True)
@@ -42,9 +43,9 @@ def objective(trial):
     REG = trial.suggest_uniform('REG', 0, 1e3)
 
     pruning = REG > 0
-    save_dir = Path("./results/optuna/") / DATA_NAME / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
+    save_dir = Path("./results/optuna/") / DATA_NAME / "linear={}/depth={}/reg={}/seed={}".format(LINEAR, TREE_DEPTH, REG, SEED)
     make_directory(save_dir)
-    model = LTLinearRegressor(TREE_DEPTH, in_features, out_features, pruned=pruning)
+    model = LTRegressor(TREE_DEPTH, in_features, out_features, pruned=pruning, linear=LINEAR)
 
     # init optimizer
     optimizer = SGD(model.parameters(), lr=LR)

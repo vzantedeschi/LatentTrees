@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from src.datasets import toy_dataset
 from src.monitors import MonitorTree
-from src.LT_models import LTLinearRegressor
+from src.LT_models import LTRegressor
 from src.optimization import train_batch
 from src.utils import make_directory
 
@@ -17,8 +17,9 @@ TREE_DEPTH = 2
 LR = 0.2
 ITER = 1e4
 REG = 0
+LINEARREGR = False
 
-SAVE_DIR = "./results/{}/reg={}/".format(DISTR, REG)
+SAVE_DIR = f"./results/{DISTR}/lin={LINEARREGR}-reg={REG}/"
 
 SEED = 2020
 np.random.seed(SEED)
@@ -34,7 +35,7 @@ monitor = MonitorTree(pruning, SAVE_DIR)
 X, Y, labels = toy_dataset(N, DISTR)
 
 # 2 input features, 1 target value
-model = LTLinearRegressor(TREE_DEPTH, 2, 1, pruned=pruning)
+model = LTRegressor(TREE_DEPTH, 2, 1, pruned=pruning, linear=LINEARREGR)
 
 # init optimizer
 optimizer = torch.optim.SGD(model.parameters(), lr=LR)

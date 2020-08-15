@@ -41,7 +41,6 @@ class BinarySearchTree():
 
     def predict(self, z):
         """ each leaf corresponds to a class """
-        import pdb; pdb.set_trace()
         labels = np.argmax(z[:, self.leaves], 1)
 
         return labels

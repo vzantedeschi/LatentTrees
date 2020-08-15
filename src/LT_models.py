@@ -9,17 +9,35 @@ from src.qp import pruning_qp
 
 # ----------------------------------------------------------------------- LINEAR REGRESSION
 
-class LinearRegression(torch.nn.Module):
+class Linear(torch.nn.Module):
     
     def __init__(self, in_size, out_size):
         
-        super(LinearRegression, self).__init__()
+        super(Regression, self).__init__()
 
         self.linear = torch.nn.Linear(in_size, out_size, bias=False)     
 
     def forward(self, x):
         
         return self.linear(x)
+
+class MLP(torch.nn.Module):
+    
+    def __init__(self, in_size, out_size):
+        
+        super(MLP, self).__init__()
+
+        self.net = torch.nn.Sequential(
+                torch.nn.Linear(in_size, in_size*2),
+                torch.nn.ELU(),
+                torch.nn.Linear(in_size*2, in_size),
+                torch.nn.ELU(),
+                torch.nn.Linear(in_size, out_size),
+            )
+
+    def forward(self, x):
+        
+        return self.net(x)
 
 class LogisticRegression(torch.nn.Module):
     
@@ -141,17 +159,20 @@ class LTBinaryClassifier(torch.nn.Module):
         self.latent_tree.train()
         self.predictor.train()
 
-class LTLinearRegressor(torch.nn.Module):
+class LTRegressor(torch.nn.Module):
 
-    def __init__(self, bst_depth, in_size, out_size, pruned=True):
+    def __init__(self, bst_depth, in_size, out_size, pruned=True, linear=True):
 
-        super(LTLinearRegressor, self).__init__()
+        super(LTRegressor, self).__init__()
 
         # init latent tree optimizer (x -> z)
         self.latent_tree = LatentTree(bst_depth, in_size + 1, pruned)
 
         # init predictor ( [x;z]-> y )
-        self.predictor = LinearRegression(in_size + 1 + self.latent_tree.bst.nb_nodes, out_size)
+        if linear:
+            self.predictor = Linear(in_size + 1 + self.latent_tree.bst.nb_nodes, out_size)
+        else:
+            self.predictor = MLP(in_size + 1 + self.latent_tree.bst.nb_nodes, out_size)
 
     def eval(self):
         self.latent_tree.eval()
@@ -192,7 +213,7 @@ class LTLinearRegressor(torch.nn.Module):
 
         checkpoint = torch.load(Path(load_dir) / 'model.t7')
         
-        model = LTLinearRegressor(checkpoint['bst_depth'], checkpoint['in_size'], checkpoint['out_size'], checkpoint['pruned'])
+        model = LTRegressor(checkpoint['bst_depth'], checkpoint['in_size'], checkpoint['out_size'], checkpoint['pruned'], checkpoint['linear'])
         model.load_state_dict(checkpoint['model_state_dict'])
 
         if 'optimizer' in kwargs.keys():
