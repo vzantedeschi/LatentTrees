@@ -72,6 +72,10 @@ class Dataset:
         if normalize:
             mean = np.mean(self.X_train, axis=0)
             std = np.std(self.X_train, axis=0)
+
+            # if constants, set std to 1
+            std[std == 0.] = 1.
+            
             self.X_train = (self.X_train - mean) / std
             self.X_valid = (self.X_valid - mean) / std
             self.X_test = (self.X_test - mean) / std
