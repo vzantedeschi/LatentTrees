@@ -16,8 +16,8 @@ from src.tabular_datasets import Dataset
 from src.utils import make_directory, TorchDataset
 
 SEED = 1337
-DATA_NAME = "MICROSOFT"
-LR = 0.001
+DATA_NAME = "YEAR"
+LR = 0.0001
 BATCH_SIZE = 512 
 EPOCHS = 20
 
@@ -75,7 +75,6 @@ def objective(trial):
         train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
 
         val_loss = evaluate(valloader, model, criterion, epoch=e, monitor=monitor)
-        print("Epoch %i: validation loss = %f\n" % (e, val_loss))
 
         if val_loss <= best_val_loss:
             best_val_loss = min(val_loss, best_val_loss)
@@ -87,12 +86,11 @@ def objective(trial):
 
         trial.report(val_loss * std**2, e)
         # Handle pruning based on the intermediate value.
-        if trial.should_prune():
+        if trial.should_prune() or np.isnan(val_loss):
             monitor.close()
             raise optuna.TrialPruned()
 
     monitor.close()
-    print("DEPTH={}, REG={}, best validation loss (epoch {}): {}, unscaled {}\n".format(TREE_DEPTH, REG, best_e, best_val_loss, best_val_loss * std ** 2))
 
     return best_val_loss * std**2
 
