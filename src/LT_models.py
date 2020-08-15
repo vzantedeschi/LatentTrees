@@ -185,3 +185,30 @@ class LTLinearRegressor(torch.nn.Module):
     def train(self):
         self.latent_tree.train()
         self.predictor.train()
+
+    @staticmethod
+    def load_model(load_dir, **kwargs):
+
+        checkpoint = torch.load(Path(load_dir) / 'model.t7')
+        
+        model = LTLinearRegressor(checkpoint['bst_depth'], checkpoint['in_size'], checkpoint['out_size'], checkpoint['pruned'])
+        model.load_state_dict(checkpoint['model_state_dict'])
+
+        if 'optimizer' in kwargs.keys():
+            kwargs['optimizer'].load_state_dict(checkpoint['optimizer_state_dict'])
+
+        return model
+  
+    def save_model(self, optimizer, state, save_dir, **kwargs):
+
+        try:
+            state_dict = model.module.state_dict()
+
+        except AttributeError:
+            state_dict = model.state_dict()
+
+        state['model_state_dict'] = state_dict
+        state['optimizer_state_dict'] = optimizer.state_dict()
+        state.update(kwargs)
+
+        torch.save(state, Path(save_dir) / 'model.t7')

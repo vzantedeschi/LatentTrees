@@ -13,12 +13,12 @@ from src.tabular_datasets import Dataset
 from src.utils import make_directory, TorchDataset
 
 SEED = 1337
-DATA_NAME = "YEAR"
-TREE_DEPTH = 6
-REG = 0
-LR = 0.01
+DATA_NAME = "MICROSOFT"
+TREE_DEPTH = 10
+REG = 9500.77001155457
+LR = 0.0991
 BATCH_SIZE = 512 
-EPOCHS = 100
+EPOCHS = 1
 
 save_dir = Path("./results/tab-datasets/") / DATA_NAME / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
 make_directory(save_dir)
@@ -57,7 +57,10 @@ state = {
     'loss-function': 'MSE',
     'learning-rate': LR,
     'seed': SEED,
-    'tree-depth': TREE_DEPTH,
+    'bst_depth': TREE_DEPTH,
+    'in_size': in_features,
+    'out_size': out_features,
+    'pruned': pruning,
     'dataset': DATA_NAME,
     'reg': REG,
 }
@@ -73,7 +76,12 @@ for e in range(EPOCHS):
     if val_loss <= best_val_loss:
         best_val_loss = min(val_loss, best_val_loss)
         best_e = e
-        # save_model(model, optimizer, state, save_dir)
+        LTLinearRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_loss=val_loss)
 
 monitor.close()
 print("best validation loss (epoch {}): {}\n".format(best_e, best_val_loss))
+
+model = LTLinearRegressor.load_model(save_dir)
+test_loss = evaluate(testloadere, model, criterion, epoch=best_e)
+print("test loss (model of epoch {}): {}\n".format(best_e, test_loss))
+
