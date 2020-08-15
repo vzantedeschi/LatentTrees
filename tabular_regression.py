@@ -16,7 +16,7 @@ SEED = 1337
 DATA_NAME = "MICROSOFT"
 TREE_DEPTH = 10
 REG = 4.6413141239
-LR = 0.0991
+LR = 0.0001
 BATCH_SIZE = 512 
 EPOCHS = 1
 
@@ -39,6 +39,7 @@ print("mean = %.5f, std = %.5f" % (mu, std))
 
 trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, shuffle=True)
 valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATCH_SIZE*2, shuffle=False)
+testloader = DataLoader(TorchDataset(data.X_test, data.y_test), batch_size=BATCH_SIZE*2, shuffle=False)
 
 model = LTLinearRegressor(TREE_DEPTH, in_features, out_features, pruned=pruning)
 
@@ -82,6 +83,6 @@ monitor.close()
 print("best validation loss (epoch {}): {}\n".format(best_e, best_val_loss))
 
 model = LTLinearRegressor.load_model(save_dir)
-test_loss = evaluate(testloadere, model, criterion, epoch=best_e)
+test_loss = evaluate(testloader, model, criterion, epoch=best_e)
 print("test loss (model of epoch {}): {}\n".format(best_e, test_loss))
 

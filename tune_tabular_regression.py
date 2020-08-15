@@ -39,7 +39,7 @@ valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATC
 def objective(trial):
 
     TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 1, 12)
-    REG = trial.suggest_uniform('REG', 0, 1e5)
+    REG = trial.suggest_uniform('REG', 0, 1e3)
 
     pruning = REG > 0
     save_dir = Path("./results/optuna/") / DATA_NAME / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)

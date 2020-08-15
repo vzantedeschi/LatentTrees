@@ -1,6 +1,7 @@
 import numpy as np
-
 import torch
+
+from pathlib import Path
 
 from src.trees import BinarySearchTree
 from src.monitors import MonitorTree
@@ -202,10 +203,10 @@ class LTLinearRegressor(torch.nn.Module):
     def save_model(self, optimizer, state, save_dir, **kwargs):
 
         try:
-            state_dict = model.module.state_dict()
+            state_dict = self.module.state_dict()
 
         except AttributeError:
-            state_dict = model.state_dict()
+            state_dict = self.state_dict()
 
         state['model_state_dict'] = state_dict
         state['optimizer_state_dict'] = optimizer.state_dict()
