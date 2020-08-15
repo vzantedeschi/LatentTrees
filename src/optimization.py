@@ -71,11 +71,11 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
 
         y_pred = model(t_x).squeeze()
 
-        loss = criterion(y_pred, t_y) / (len(t_x) * model.latent_tree.bst.nb_nodes)
+        loss = criterion(y_pred, t_y) / len(t_x)
 
         if reg > 0:
 
-            obj = loss + reg * torch.norm(model.latent_tree.eta, p=norm)
+            obj = loss + reg * model.latent_tree.bst.nb_nodes * torch.norm(model.latent_tree.eta, p=norm)
             train_obj += obj.detach().numpy()
 
             pbar.set_description("avg train loss + reg %f" % (train_obj / (i + 1)))

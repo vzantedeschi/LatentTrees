@@ -48,7 +48,7 @@ model = LTRegressor(TREE_DEPTH, in_features, out_features, pruned=pruning, linea
 optimizer = SGD(model.parameters(), lr=LR)
 
 # init loss
-criterion = MSELoss(reduction="mean")
+criterion = MSELoss(reduction="none")
 
 # init train-eval monitoring 
 monitor = MonitorTree(pruning, save_dir)
@@ -82,9 +82,9 @@ for e in range(EPOCHS):
         LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_loss=val_loss)
 
 monitor.close()
-print("best validation loss (epoch {}): {}\n".format(best_e, best_val_loss))
+print("best validation loss (epoch {}): {}\n".format(best_e, best_val_loss * std ** 2))
 
 model = LTRegressor.load_model(save_dir)
-test_loss = evaluate(testloader, model, criterion, epoch=best_e)
-print("test loss (model of epoch {}): {}\n".format(best_e, test_loss))
+test_loss = evaluate(testloader, model, criterion)
+print("test loss (model of epoch {}): {}\n".format(best_e, test_loss * std ** 2))
 
