@@ -15,7 +15,7 @@ from src.utils import make_directory, TorchDataset
 SEED = 1337
 DATA_NAME = "MICROSOFT"
 TREE_DEPTH = 10
-REG = 9500.77001155457
+REG = 4.6413141239
 LR = 0.0991
 BATCH_SIZE = 512 
 EPOCHS = 1
@@ -68,7 +68,7 @@ state = {
 best_val_loss = float("inf")
 best_e = -1
 for e in range(EPOCHS):
-    train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
+    # train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
 
     val_loss = evaluate(valloader, model, criterion, epoch=e, monitor=monitor)
     print("Epoch %i: validation loss = %f\n" % (e, val_loss))
