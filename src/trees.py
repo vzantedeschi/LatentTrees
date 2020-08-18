@@ -45,6 +45,15 @@ class BinarySearchTree():
 
         return labels
 
+    def to_adj_matrix(self):
+
+        adj_matrix = np.zeros((self.nb_nodes, self.nb_nodes))
+        adj_matrix[self.split_nodes, self.desc_left] = 1
+        adj_matrix[self.split_nodes, self.desc_right] = 1
+
+        return adj_matrix
+
+
 def str_as_bst(nodes):
 
     depth = int((len(nodes) + 1) ** 0.5)
