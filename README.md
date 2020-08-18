@@ -19,6 +19,9 @@ sudo apt install gcc-9
 sudo apt install g++-9
 ```
 
+```bash
+sudo apt-get install python3-dev graphviz libgraphviz-dev pkg-config
+```
 ### Setup
 ```python
 CXX=gcc python3 setup.py build_ext --inplace
