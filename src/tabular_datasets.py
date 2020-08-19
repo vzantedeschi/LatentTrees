@@ -20,6 +20,7 @@ from sklearn.preprocessing import QuantileTransformer
 
 from category_encoders import LeaveOneOutEncoder
 
+from src.datasets import fetch_GLASS
 from src.utils import download
 
 class Dataset:
@@ -455,4 +456,5 @@ DATASETS = {
     'MICROSOFT': fetch_MICROSOFT,
     'YAHOO': fetch_YAHOO,
     'CLICK': fetch_CLICK,
+    'GLASS': fetch_GLASS,
 }

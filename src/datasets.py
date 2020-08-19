@@ -1,7 +1,11 @@
 import numpy as np
 
-from sklearn.datasets import make_swiss_roll
+from pathlib import Path
 
+from sklearn.datasets import make_swiss_roll
+from sklearn.model_selection import train_test_split
+
+from src.utils import download
 
 # ------------------------------------------------------------ TOY DATASETS
 
@@ -42,3 +46,27 @@ def toy_dataset(n=1000, distr="xor", dim=2):
 
     else:
         NotImplementedError
+
+# -------------------------------------------------------- UCI DATASETS
+
+def fetch_GLASS(path, valid_size=0.2, test_size=0.2, rnd_state=1):
+
+    path = Path(path)
+    data_path = path / 'glass.data'
+
+    if not data_path.exists():
+        path.mkdir(parents=True)
+
+        download('https://archive.ics.uci.edu/ml/machine-learning-databases/glass/glass.data', data_path)
+
+    data = np.genfromtxt(data_path, delimiter=',')
+    
+    X, Y = (data[:, 1:-1]).astype(np.float32), (data[:, -1] - 1).astype(int)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=rnd_state)
+
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=rnd_state)
+
+    return dict(
+        X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
+    )
