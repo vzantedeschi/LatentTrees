@@ -33,7 +33,7 @@ trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BA
 valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATCH_SIZE*2, shuffle=False)
 testloader = DataLoader(TorchDataset(data.X_test, data.y_test), batch_size=BATCH_SIZE*2, shuffle=False)
 
-model = LTBinaryClassifier(TREE_DEPTH, in_features + 1, pruned=pruning)
+model = LTBinaryClassifier(TREE_DEPTH, in_features, pruned=pruning)
 
 # init optimizer
 optimizer = SGD(model.parameters(), lr=LR)

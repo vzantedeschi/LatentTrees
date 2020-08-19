@@ -115,10 +115,10 @@ class LTBinaryClassifier(torch.nn.Module):
         super(LTBinaryClassifier, self).__init__()
 
         # init latent tree optimizer (x -> z)
-        self.latent_tree = LatentTree(bst_depth, in_size, pruned)
+        self.latent_tree = LatentTree(bst_depth, in_size + 1, pruned)
 
         # init predictor ( [x;z]-> y )
-        self.predictor = LogisticRegression(in_size + self.latent_tree.bst.nb_nodes, 1)
+        self.predictor = LogisticRegression(in_size + 1 + self.latent_tree.bst.nb_nodes, 1)
 
     def eval(self):
         self.latent_tree.eval()
