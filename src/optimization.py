@@ -105,7 +105,7 @@ def evaluate(dataloader, model, criterion, epoch=None, monitor=None):
         t_x, t_y = batch
         num_points += len(t_x)
 
-        y_pred = model(t_x).squeeze()
+        y_pred = model.predict(t_x).squeeze()
 
         loss = criterion(y_pred, t_y)
         total_loss += loss.detach()
