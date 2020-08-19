@@ -55,14 +55,19 @@ def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, reg=10, norm="inf", roo
 
     return model, optimizer
 
-def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm=float("inf"), monitor=None):
+def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm=float("inf"), monitor=None, prog_bar=True):
 
     model.train()
 
     last_iter = epoch * len(dataloader)
 
     train_obj = 0.
-    pbar = tqdm(dataloader)
+
+    if prog_bar:
+        pbar = tqdm(dataloader)
+    else:
+        pbar = dataloader
+
     for i, batch in enumerate(pbar):
 
         optimizer.zero_grad()
@@ -78,14 +83,16 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
             obj = loss + reg * model.latent_tree.bst.nb_nodes * torch.norm(model.latent_tree.eta, p=norm)
             train_obj += obj.detach().numpy()
 
-            pbar.set_description("avg train loss + reg %f" % (train_obj / (i + 1)))
+            if prog_bar:
+                pbar.set_description("avg train loss + reg %f" % (train_obj / (i + 1)))
 
         else:
 
             obj = loss
             train_obj += obj.detach().numpy()
 
-            pbar.set_description("avg train loss %f" % (train_obj / (i + 1)))
+            if prog_bar:
+                pbar.set_description("avg train loss %f" % (train_obj / (i + 1)))
 
         obj.backward()
 

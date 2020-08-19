@@ -53,6 +53,25 @@ class BinarySearchTree():
 
         return adj_matrix
 
+    def normalize(self, z):
+        """ normalize nodes at same depth """
+
+        for d in range(self.depth + 1):
+
+            i = 2 ** d - 1
+            z[i:i + 2 ** d] /= sum(z[i:i + 2 ** d])
+
+        return np.nan_to_num(z)
+
+    def find_LCA(self, n1, n2):
+        """ find lowest common ancestor between two nodes of the tree """
+
+        while n1 != n2:
+            n1, n2 = min(n1, n2), max(n1, n2)
+
+            n2 = self.parent(n2)
+
+        return n1
 
 def str_as_bst(nodes):
 
@@ -74,3 +93,20 @@ def str_as_bst(nodes):
         lines.append(l)
 
     return reduce(lambda l1, l2: l1 + '\n' + l2, lines[::-1])
+
+if __name__ == "__main__":
+
+    bst = BinarySearchTree(2)
+
+    assert bst.find_LCA(3, 4) == 1, bst.find_LCA(3, 4)
+    assert bst.find_LCA(5, 6) == 2, bst.find_LCA(5, 6)
+    assert bst.find_LCA(0, 6) == 0, bst.find_LCA(0, 6)
+    assert bst.find_LCA(1, 6) == 0, bst.find_LCA(1, 6)
+
+    bst = BinarySearchTree(4)
+
+    assert bst.find_LCA(3, 4) == 1, bst.find_LCA(3, 4)
+    assert bst.find_LCA(5, 6) == 2, bst.find_LCA(5, 6)
+    assert bst.find_LCA(0, 6) == 0, bst.find_LCA(0, 6)
+    assert bst.find_LCA(1, 6) == 0, bst.find_LCA(1, 6)
+    assert bst.find_LCA(25, 27) == 2, bst.find_LCA(25, 27)

@@ -1,6 +1,7 @@
 import numpy as np
 
 from pathlib import Path
+from tqdm import tqdm
 
 from torch.nn import CrossEntropyLoss
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -16,12 +17,12 @@ from src.utils import make_directory, TorchDataset
 SEED = 1337
 DATA_NAME = "GLASS"
 TREE_DEPTH = 4
-REG = 0
-LR = 0.5
+REG = 1
+LR = 0.2
 BATCH_SIZE = 128 
-EPOCHS = int(1e3)
+EPOCHS = int(5e4)
 
-save_dir = Path("./results/tab-datasets/") / DATA_NAME / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
+save_dir = Path("./results/clustering/") / DATA_NAME / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
 make_directory(save_dir)
 
 pruning = REG > 0
@@ -68,8 +69,8 @@ state = {
 
 best_val_loss = float("inf")
 best_e = -1
-for e in range(EPOCHS):
-    train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
+for e in tqdm(range(EPOCHS)):
+    train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor, prog_bar=False)
 
     if e % 100 == 0:
         val_loss = evaluate(valloader, model, eval_criterion, epoch=e, monitor=monitor)
