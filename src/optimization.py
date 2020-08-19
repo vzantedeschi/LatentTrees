@@ -71,7 +71,7 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
 
         y_pred = model(t_x).squeeze()
 
-        loss = criterion(y_pred, t_y.float()) / len(t_x)
+        loss = criterion(y_pred, t_y) / len(t_x)
 
         if reg > 0:
 

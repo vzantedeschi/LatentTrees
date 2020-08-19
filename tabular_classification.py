@@ -76,6 +76,6 @@ monitor.close()
 print("best validation error rate (epoch {}): {}\n".format(best_e, best_val_loss))
 
 model = LTBinaryClassifier.load_model(save_dir)
-test_loss = evaluate(testloader, model, criterion)
+test_loss = evaluate(testloader, model, eval_criterion)
 print("test error rate (model of epoch {}): {}\n".format(best_e, test_loss))
 

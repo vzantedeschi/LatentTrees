@@ -13,7 +13,7 @@ class Linear(torch.nn.Module):
     
     def __init__(self, in_size, out_size):
         
-        super(Regression, self).__init__()
+        super(Linear, self).__init__()
 
         self.linear = torch.nn.Linear(in_size, out_size)     
 
@@ -45,7 +45,7 @@ class LogisticRegression(torch.nn.Module):
         
         super(LogisticRegression, self).__init__()
 
-        self.linear = torch.nn.Linear(in_size, out_size, bias=False)     
+        self.linear = torch.nn.Linear(in_size, out_size)     
 
     def forward(self, x):
 
@@ -201,13 +201,13 @@ class LTClassifier(LTBinaryClassifier):
 
     def __init__(self, bst_depth, in_size, num_classes, pruned=True):
 
-        super(LTClassifier, self).__init__()
+        torch.nn.Module.__init__(self)
 
         # init latent tree optimizer (x -> z)
-        self.latent_tree = LatentTree(bst_depth, in_size, pruned)
+        self.latent_tree = LatentTree(bst_depth, in_size + 1, pruned)
 
         # init predictor ( [x;z]-> y )
-        self.predictor = Linear(in_size + self.latent_tree.bst.nb_nodes, num_classes)
+        self.predictor = Linear(in_size + 1 + self.latent_tree.bst.nb_nodes, num_classes)
 
     def predict(self, X):
 
