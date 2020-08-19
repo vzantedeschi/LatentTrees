@@ -16,9 +16,9 @@ SEED = 1337
 DATA_NAME = "HIGGS"
 TREE_DEPTH = 5
 REG = 0
-LR = 0.0001
+LR = 0.001
 BATCH_SIZE = 512 
-EPOCHS = 20
+EPOCHS = 100
 
 save_dir = Path("./results/tab-datasets/") / DATA_NAME / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
 make_directory(save_dir)
