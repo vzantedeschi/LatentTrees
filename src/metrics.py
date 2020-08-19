@@ -33,6 +33,4 @@ def dendrogram_purity(X, Y, model, num_classes):
             a = model.latent_tree.bst.find_LCA(n1, n2)
             score += purity[c, a]
 
-    print("Dendrogram Purity Score = ", score / num_pairs)
-
-    return score, class_hist
+    return score / num_pairs, class_hist

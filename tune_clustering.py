@@ -68,7 +68,7 @@ def objective(trial):
         'reg': REG,
     }
 
-    best_val_loss = float("inf")
+    best_val_score = 0
     best_e = -1
     for e in tqdm(range(EPOCHS)):
         train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor, prog_bar=False)
