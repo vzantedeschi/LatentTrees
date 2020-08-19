@@ -45,7 +45,7 @@ class LogisticRegression(torch.nn.Module):
         
         super(LogisticRegression, self).__init__()
 
-        self.linear = torch.nn.Linear(in_size, out_size)     
+        self.linear = torch.nn.Linear(in_size, out_size, bias=False)     
 
     def forward(self, x):
 
@@ -64,7 +64,7 @@ class LatentTree(torch.nn.Module):
         self.in_size = dim
         self.bst = BinarySearchTree(bst_depth)      
 
-        self.A = torch.nn.Parameter(torch.rand(self.bst.nb_split, dim))
+        self.A = torch.nn.Parameter(torch.rand(self.bst.nb_split, dim) * 0.001)
         
         self.pruned = pruned
         

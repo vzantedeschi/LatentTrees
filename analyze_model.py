@@ -1,22 +1,38 @@
 import numpy as np
 import torch
+from torch.utils.data import DataLoader
 
 import networkx as nx
 from networkx.drawing.nx_agraph import write_dot, graphviz_layout
 import matplotlib.pyplot as plt
 
 from src.datasets import toy_dataset
+from src.tabular_datasets import Dataset
 from src.LT_models import LTBinaryClassifier
+from src.optimization import evaluate
+from src.utils import TorchDataset
 
-LOAD_DIR = "./results/xor/depth=2/reg=0/"
+LOAD_DIR = "./results/tab-datasets/HIGGS/depth=5/reg=0/seed=1337/"
 NB_CLASSES = 2
-SEED = 1225
-np.random.seed(SEED)
-
 model = LTBinaryClassifier.load_model(LOAD_DIR)
 
-# generate toy dataset
-X, Y = toy_dataset(100, 'xor')
+if 'xor' in LOAD_DIR:
+    SEED = 1225
+    np.random.seed(SEED)
+
+    # generate toy dataset
+    X, Y = toy_dataset(100, 'xor')
+
+else:
+    DATA_NAME = LOAD_DIR.split('/')[-5]
+    SEED = int(LOAD_DIR.split('/')[-2][5:])
+
+    data = Dataset(DATA_NAME, random_state=SEED, quantile_transform=True, quantile_noise=1e-3, normalize=True)
+    X, Y = data.X_test, data.y_test
+    testloader = DataLoader(TorchDataset(X, Y), batch_size=BATCH_SIZE*2, shuffle=False)
+
+    test_loss = evaluate(testloader, model, lambda x, y: (x != y).sum())
+    print(f"test error rate: {test_loss}\n")
 
 # get tree representation of test points
 zs, _ = model.predict_bst(torch.from_numpy(X).float())
