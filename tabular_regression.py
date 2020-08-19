@@ -48,7 +48,7 @@ model = LTRegressor(TREE_DEPTH, in_features, out_features, pruned=pruning, linea
 optimizer = SGD(model.parameters(), lr=LR)
 
 # init loss
-criterion = MSELoss(reduction="none")
+criterion = MSELoss(reduction="sum")
 
 # init train-eval monitoring 
 monitor = MonitorTree(pruning, save_dir)
