@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from src.datasets import toy_dataset
 from src.LT_models import LTBinaryClassifier
 
-LOAD_DIR = "./results/xor/depth=4/reg=10/"
+LOAD_DIR = "./results/xor/depth=2/reg=0/"
 NB_CLASSES = 2
 SEED = 1225
 np.random.seed(SEED)

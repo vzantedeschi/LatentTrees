@@ -9,11 +9,11 @@ from src.optimization import train_batch
 from src.utils import make_directory
 
 DISTR = "xor"
-N = 100
-TREE_DEPTH = 4
+N = 1000
+TREE_DEPTH = 2
 LR = 0.1
 ITER = 1e4
-REG = 10
+REG = 0
 NORM = float('inf')
 SAVE_DIR = f"./results/{DISTR}/depth={TREE_DEPTH}/reg={REG}/"
 

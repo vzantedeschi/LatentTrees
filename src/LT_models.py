@@ -15,7 +15,7 @@ class Linear(torch.nn.Module):
         
         super(Regression, self).__init__()
 
-        self.linear = torch.nn.Linear(in_size, out_size, bias=False)     
+        self.linear = torch.nn.Linear(in_size, out_size)     
 
     def forward(self, x):
         
@@ -45,7 +45,7 @@ class LogisticRegression(torch.nn.Module):
         
         super(LogisticRegression, self).__init__()
 
-        self.linear = torch.nn.Linear(in_size, out_size, bias=False)     
+        self.linear = torch.nn.Linear(in_size, out_size)     
 
     def forward(self, x):
 
@@ -61,7 +61,9 @@ class LatentTree(torch.nn.Module):
 
         super(LatentTree, self).__init__()
 
-        self.bst = BinarySearchTree(bst_depth)       
+        self.in_size = dim
+        self.bst = BinarySearchTree(bst_depth)      
+
         self.A = torch.nn.Parameter(torch.rand(self.bst.nb_split, dim))
         
         self.pruned = pruned
@@ -89,6 +91,17 @@ class LatentTree(torch.nn.Module):
         z = self.forward(x).detach().numpy()
 
         return z, self.bst.predict(z)
+
+    # def _init_A(self, x):
+
+    #     A = torch.rand(self.bst.nb_split, self.in_size - 1)
+    #     b = torch.zeros(self.bst.nb_split, 1)
+
+    #     for n in self.bst.split_nodes:
+    #         b[n] = -torch.mm(x, self.A[n].T).mean()
+    #         b[]
+
+    #     return torch.nn.Parameter(torch.cat((A, b), axis=1))
 
     def _compute_q(self, x):
 
@@ -183,6 +196,38 @@ class LTBinaryClassifier(torch.nn.Module):
         state.update(kwargs)
 
         torch.save(state, Path(save_dir) / 'model.t7')
+
+class LTClassifier(LTBinaryClassifier):
+
+    def __init__(self, bst_depth, in_size, num_classes, pruned=True):
+
+        super(LTClassifier, self).__init__()
+
+        # init latent tree optimizer (x -> z)
+        self.latent_tree = LatentTree(bst_depth, in_size, pruned)
+
+        # init predictor ( [x;z]-> y )
+        self.predictor = Linear(in_size + self.latent_tree.bst.nb_nodes, num_classes)
+
+    def predict(self, X):
+
+        y_pred = self.forward(X)
+        y_pred = torch.argmax(y_pred, axis=1)
+
+        return y_pred.detach()
+
+    @staticmethod
+    def load_model(load_dir, **kwargs):
+
+        checkpoint = torch.load(Path(load_dir) / 'model.t7')
+        
+        model = LTClassifier(checkpoint['bst_depth'], checkpoint['in_size'], checkpoint['num_classes'], checkpoint['pruned'])
+        model.load_state_dict(checkpoint['model_state_dict'])
+
+        if 'optimizer' in kwargs.keys():
+            kwargs['optimizer'].load_state_dict(checkpoint['optimizer_state_dict'])
+
+        return model
 
 class LTRegressor(torch.nn.Module):
 
