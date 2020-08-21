@@ -75,5 +75,8 @@ if __name__ == "__main__":
     assert isclose(dendrogram_purity(bst2, pred_y, Y, purity, NB_CLASSES), 2 / num_pairs), (dendrogram_purity(bst2, pred_y, Y, purity, NB_CLASSES), 2 / num_pairs)
 
     purity = np.array([[0.5, 1, 0] + [0] * (bst2.nb_nodes - 3)])
-    pred_y = np.array([0, 1, 2, 3])
     assert isclose(dendrogram_purity(bst2, pred_y, Y, purity, NB_CLASSES), (2 * 1 + 0.5 * 8) / num_pairs), (dendrogram_purity(bst2, pred_y, Y, purity, NB_CLASSES), (2 * 1 + 0.5 * 8) / num_pairs)
+
+    purity = np.array([[0.5, 1, 0, 1, 1]  + [0] * (bst2.nb_nodes - 5)])
+
+    assert isclose(dendrogram_purity(bst2, pred_y, Y, purity, NB_CLASSES), (4 * 1 + 0.5 * 8) / num_pairs), (dendrogram_purity(bst2, pred_y, Y, purity, NB_CLASSES), (4 * 1 + 0.5 * 8) / num_pairs)
