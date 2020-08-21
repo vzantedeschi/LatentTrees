@@ -3,11 +3,12 @@ import numpy as np
 from pathlib import Path
 
 from torch.nn import MSELoss
-from torch.optim import SGD
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
 import optuna
+
+from qhoptim.pyt import QHAdam
 
 from src.LT_models import LTRegressor
 from src.monitors import MonitorTree
@@ -48,7 +49,7 @@ def objective(trial):
     model = LTRegressor(TREE_DEPTH, in_features, out_features, pruned=pruning, linear=LINEAR)
 
     # init optimizer
-    optimizer = SGD(model.parameters(), lr=LR)
+    optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.998))
 
     # init learning rate scheduler
     lr_scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)

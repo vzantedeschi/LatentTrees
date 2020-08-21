@@ -3,8 +3,9 @@ import numpy as np
 from pathlib import Path
 
 from torch.nn import BCELoss
-from torch.optim import SGD
 from torch.utils.data import DataLoader
+
+from qhoptim.pyt import QHAdam
 
 from src.LT_models import LTBinaryClassifier
 from src.monitors import MonitorTree
@@ -36,7 +37,7 @@ testloader = DataLoader(TorchDataset(data.X_test, data.y_test), batch_size=BATCH
 model = LTBinaryClassifier(TREE_DEPTH, in_features, pruned=pruning)
 
 # init optimizer
-optimizer = SGD(model.parameters(), lr=LR)
+optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.998))
 
 # init loss
 criterion = BCELoss(reduction="sum")

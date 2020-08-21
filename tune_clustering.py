@@ -5,10 +5,11 @@ from tqdm import tqdm
 
 from torch.nn import CrossEntropyLoss
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch.optim import SGD
 from torch.utils.data import DataLoader
 
 import optuna
+
+from qhoptim.pyt import QHAdam
 
 from src.LT_models import LTClassifier
 from src.metrics import LT_dendrogram_purity
@@ -44,7 +45,8 @@ def objective(trial):
     model = LTClassifier(TREE_DEPTH, in_features, num_classes, pruned=pruning)
 
     # init optimizer
-    optimizer = SGD(model.parameters(), lr=LR)
+    optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.998))
+
 
     # init learning rate scheduler
     lr_scheduler = ReduceLROnPlateau(optimizer, 'max', factor=0.1, patience=2)
