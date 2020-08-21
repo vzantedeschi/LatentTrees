@@ -7,7 +7,7 @@ from networkx.drawing.nx_agraph import graphviz_layout
 import matplotlib.pyplot as plt
 
 from src.datasets import toy_dataset
-from src.metrics import dendrogram_purity
+from src.metrics import LT_dendrogram_purity
 from src.tabular_datasets import Dataset
 from src.LT_models import LTBinaryClassifier, LTClassifier
 from src.optimization import evaluate
@@ -46,7 +46,7 @@ else:
     test_loss = evaluate(testloader, model, lambda x, y: (x != y).sum())
     print(f"test error rate: {test_loss}\n")
 
-score, class_hist = dendrogram_purity(X, Y, model, NB_CLASSES)
+score, class_hist = LT_dendrogram_purity(X, Y, model, NB_CLASSES)
 
 for c in range(NB_CLASSES):
     

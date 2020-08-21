@@ -7,7 +7,7 @@ from src.trees import BinarySearchTree
 from src.monitors import MonitorTree
 from src.qp import pruning_qp
 
-# ----------------------------------------------------------------------- LINEAR REGRESSION
+# ----------------------------------------------------------------------- REGRESSION
 
 class Linear(torch.nn.Module):
     

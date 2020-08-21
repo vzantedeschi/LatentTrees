@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 import optuna
 
 from src.LT_models import LTClassifier
-from src.metrics import dendrogram_purity
+from src.metrics import LT_dendrogram_purity
 from src.monitors import MonitorTree
 from src.optimization import train_stochastic, evaluate
 from src.tabular_datasets import Dataset
@@ -74,7 +74,7 @@ def objective(trial):
         train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor, prog_bar=False)
 
         if e % 100 == 0:
-            score, _ = dendrogram_purity(data.X_valid, data.y_valid, model, num_classes)
+            score, _ = LT_dendrogram_purity(data.X_valid, data.y_valid, model, num_classes)
             print("Epoch %i: validation purity = %f\n" % (e, score))
 
             if score >= best_val_score:
@@ -87,12 +87,12 @@ def objective(trial):
 
     monitor.close()
 
-    return -best_val_score
+    return best_val_score
 
 if __name__ == "__main__":
 
     # Set up the median stopping rule as the pruning condition.
-    study = optuna.create_study(study_name=DATA_NAME, pruner=optuna.pruners.MedianPruner())
+    study = optuna.create_study(study_name=DATA_NAME, pruner=optuna.pruners.MedianPruner(), direction="maximize")
     study.optimize(objective, n_trials=100)
 
     print(study.best_params, study.best_value)
