@@ -13,7 +13,7 @@ def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, reg=10, norm="inf", roo
 
     pruning = reg > 0
     
-    model = LTBinaryClassifier(bst_depth, d + 1, pruned=pruning)
+    model = LTBinaryClassifier(bst_depth, d, pruned=pruning)
     monitor = MonitorTree(pruning, "{}/norm={}/reg={}/".format(root_dir, norm, reg))
 
     # init optimizer

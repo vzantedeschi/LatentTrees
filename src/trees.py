@@ -64,7 +64,7 @@ class BinarySearchTree():
         return np.nan_to_num(z)
 
     def find_LCA(self, n1, n2):
-        """ find lowest common ancestor between two nodes of the tree """
+        """ find Lowest Common Ancestor between two nodes of the tree """
 
         while n1 != n2:
             n1, n2 = min(n1, n2), max(n1, n2)

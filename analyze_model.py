@@ -46,7 +46,7 @@ else:
     test_loss = evaluate(testloader, model, lambda x, y: (x != y).sum())
     print(f"test error rate: {test_loss}\n")
 
-score, class_hist = LT_dendrogram_purity(X, Y, model, NB_CLASSES)
+score, class_hist = LT_dendrogram_purity(X, Y, model, model.latent_tree.bst, NB_CLASSES)
 
 for c in range(NB_CLASSES):
     

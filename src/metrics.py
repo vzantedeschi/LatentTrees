@@ -3,7 +3,7 @@ import torch
 
 import itertools
 
-def LT_dendrogram_purity(X, Y, model, nb_classes):
+def LT_dendrogram_purity(X, Y, model, bst, nb_classes):
 
     # get tree representation of test points
     zs, labels = model.predict_bst(torch.from_numpy(X).float())
@@ -17,7 +17,7 @@ def LT_dendrogram_purity(X, Y, model, nb_classes):
 
     purity = np.nan_to_num(class_hist / np.sum(class_hist, axis=0)) # node's fraction of points of a class
 
-    return dendrogram_purity(model.latent_tree.bst, labels, Y, purity, nb_classes), class_hist
+    return dendrogram_purity(bst, labels, Y, purity, nb_classes), class_hist
 
 def dendrogram_purity(bst, pred_y, true_y, purity, nb_classes):
 
