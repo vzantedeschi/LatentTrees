@@ -18,9 +18,9 @@ from src.utils import make_directory, TorchDataset
 
 SEED = 1337
 DATA_NAME = "COVTYPE"
-TREE_DEPTH = 5
-REG = 800
-LR = 0.2
+TREE_DEPTH = 2
+REG = 0
+LR = 0.01
 BATCH_SIZE = 512 
 EPOCHS = 20
 
@@ -54,8 +54,6 @@ lr_scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)
 # init loss
 criterion = MSELoss(reduction="sum")
 
-eval_criterion = lambda x, y: (x != y).sum()
-
 # init train-eval monitoring 
 monitor = MonitorTree(pruning, save_dir)
 
@@ -78,28 +76,27 @@ best_e = -1
 for e in range(EPOCHS):
     train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
 
-    val_loss = evaluate(valloader, model, criterion, epoch=e, monitor=monitor)
+    val_loss = evaluate(valloader, model, {'MSE': criterion}, epoch=e, monitor=monitor)
     score, _ = LT_dendrogram_purity(data.X_valid_in, data.y_valid, model, model.latent_tree.bst, num_classes)
 
-    print("Epoch %i: validation loss = %f; validation purity = %f\n" % (e, val_loss, score))
+    print("Epoch %i: validation mse = %f; validation purity = %f\n" % (e, val_loss['MSE'], score))
 
     monitor.write(model, e, val={"Dendrogram Purity": score})
 
     if score >= best_val_score:
         best_val_score = score
         best_e = e
-        LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_loss=val_loss, val_dp=score)
+        LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_mse=val_loss['MSE'], val_dp=score)
 
     # reduce learning rate if needed
-    lr_scheduler.step(val_loss)
+    lr_scheduler.step(val_loss['MSE'])
     monitor.write(model, e, train={"lr": optimizer.param_groups[0]['lr']})
 
 monitor.close()
-print("best validation loss (epoch {}): {}\n".format(best_e, best_val_loss))
+print("best validation purity (epoch {}): {}\n".format(best_e, best_val_score))
 
 model = LTRegressor.load_model(save_dir)
-test_loss = evaluate(testloader, model, criterion)
-print("test error loss (model of epoch {}): {}\n".format(best_e, test_loss))
+test_loss = evaluate(testloader, model, {'MSE': criterion})
 
 score, _ = LT_dendrogram_purity(data.X_test_in, data.y_test, model, model.latent_tree.bst, num_classes)
-print("Epoch %i: validation purity = %f\n" % (e, score))
+print("Epoch %i: test mse = %f; test purity = %f\n" % (best_e, test_loss['MSE'], score))

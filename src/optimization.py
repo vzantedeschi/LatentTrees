@@ -100,11 +100,12 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
 
         if monitor:
             monitor.write(model, i + last_iter, train={"Loss": loss.detach()})
-def evaluate(dataloader, model, criterion, epoch=None, monitor=None):
+            
+def evaluate(dataloader, model, criteria, epoch=None, monitor=None):
 
     model.eval()
 
-    total_loss = 0.
+    total_losses = {k: 0. for k in criteria.keys()}
     
     num_points = 0
     for batch in dataloader:
@@ -114,10 +115,11 @@ def evaluate(dataloader, model, criterion, epoch=None, monitor=None):
 
         y_pred = model.predict(t_x).squeeze()
 
-        loss = criterion(y_pred, t_y)
-        total_loss += loss.detach()
+        for k in criteria.keys():
+            loss = criteria[k](y_pred, t_y)
+            total_losses[k] += loss.detach()
 
     if monitor:
-        monitor.write(model, epoch, val={"Loss": total_loss / num_points})
+        monitor.write(model, epoch, val={k: loss / num_points for k, loss in total_losses.items()})
 
-    return total_loss.numpy() / num_points
+    return {k: loss.numpy() / num_points for k, loss in total_losses.items()}
