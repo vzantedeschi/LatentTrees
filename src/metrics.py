@@ -26,16 +26,18 @@ def dendrogram_purity(bst, pred_y, true_y, purity, nb_classes):
     
     num_pairs = 0
     score = 0
+        
+    # loop over all possible combinations of outcomes
+    for n1, n2 in itertools.product(bst.leaves, bst.leaves):
 
-    # loop over classes
-    for c in range(nb_classes):
+        a = bst.find_LCA(n1, n2)
 
-        # loop over all pairs of points of that class
-        for n1, n2 in itertools.product(leaves[true_y == c], leaves[true_y == c]):
+        # loop over classes
+        for c in range(nb_classes):
 
-            num_pairs += 1
-            a = bst.find_LCA(n1, n2)
-            score += purity[c, a]
+            c_point_leaves = leaves[true_y == c]
+            num_pairs += sum(c_point_leaves == n1) * sum(c_point_leaves == n2)
+            score += purity[c, a] * sum(c_point_leaves == n1) * sum(c_point_leaves == n2)
 
     return score / num_pairs
 
