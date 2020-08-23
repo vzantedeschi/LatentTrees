@@ -3,13 +3,14 @@ import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 
-from torch.nn import CrossEntropyLoss
+from torch.nn import MSELoss
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
 from qhoptim.pyt import QHAdam
 
-from src.LT_models import LTClassifier
+from src.LT_models import LTRegressor
+from src.metrics import LT_dendrogram_purity
 from src.monitors import MonitorTree
 from src.optimization import train_stochastic, evaluate
 from src.tabular_datasets import Dataset
@@ -17,28 +18,32 @@ from src.utils import make_directory, TorchDataset
 
 SEED = 1337
 DATA_NAME = "GLASS"
-TREE_DEPTH = 4
-REG = 1
+TREE_DEPTH = 5
+REG = 800
 LR = 0.2
 BATCH_SIZE = 128 
-EPOCHS = int(5e4)
+EPOCHS = int(1e4)
 
-save_dir = Path("./results/clustering/") / DATA_NAME / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
+in_features = [0, 1]
+out_features = list(range(2, 9))
+
+save_dir = Path("./results/clustering-selfsup/") / DATA_NAME / "in-feats=[0,1]/depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
 make_directory(save_dir)
 
 pruning = REG > 0
 
 data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
-in_features = data.X_train.shape[1]
 classes = np.unique(data.y_train)
 num_classes = max(classes) + 1
-print(classes)
 
-trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, shuffle=True)
-valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATCH_SIZE*2, shuffle=False)
-testloader = DataLoader(TorchDataset(data.X_test, data.y_test), batch_size=BATCH_SIZE*2, shuffle=False)
+data.X_train_in, data.X_valid_in, data.X_test_in = data.X_train[:, in_features], data.X_valid[:, in_features], data.X_test[:, in_features]
+data.X_train_out, data.X_valid_out, data.X_test_out = data.X_train[:, out_features], data.X_valid[:, out_features], data.X_test[:, out_features]
 
-model = LTClassifier(TREE_DEPTH, in_features, num_classes, pruned=pruning)
+trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out), batch_size=BATCH_SIZE, shuffle=True)
+valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_train_out), batch_size=BATCH_SIZE*2, shuffle=False)
+testloader = DataLoader(TorchDataset(data.X_test_in, data.X_train_out), batch_size=BATCH_SIZE*2, shuffle=False)
+
+model = LTRegressor(TREE_DEPTH, len(in_features), len(out_features), pruned=pruning)
 
 # init optimizer
 optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.998))
@@ -47,9 +52,8 @@ optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.99
 lr_scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)
 
 # init loss
-criterion = CrossEntropyLoss(reduction="sum")
+criterion = MSELoss(reduction="sum")
 
-# evaluation criterion => error rate
 eval_criterion = lambda x, y: (x != y).sum()
 
 # init train-eval monitoring 
@@ -61,11 +65,12 @@ state = {
     'learning-rate': LR,
     'seed': SEED,
     'bst_depth': TREE_DEPTH,
-    'in_size': in_features,
-    'num_classes': num_classes,
+    'in_size': len(in_features),
+    'out_size': len(out_features),
     'pruned': pruning,
     'dataset': DATA_NAME,
     'reg': REG,
+    'linear': True,
 }
 
 best_val_loss = float("inf")
@@ -74,21 +79,28 @@ for e in tqdm(range(EPOCHS)):
     train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor, prog_bar=False)
 
     if e % 100 == 0:
-        val_loss = evaluate(valloader, model, eval_criterion, epoch=e, monitor=monitor)
-        print("Epoch %i: validation loss = %f\n" % (e, val_loss))
+        val_loss = evaluate(valloader, model, criterion, epoch=e, monitor=monitor)
+        score, _ = LT_dendrogram_purity(data.X_valid_in, data.y_valid, model, model.latent_tree.bst, num_classes)
+
+        print("Epoch %i: validation loss = %f; validation purity = %f\n" % (e, val_loss, score))
+
+        monitor.write(model, e, val={"Dendrogram Purity": score})
 
         if val_loss <= best_val_loss:
             best_val_loss = val_loss
             best_e = e
-            LTClassifier.save_model(model, optimizer, state, save_dir, epoch=e, val_loss=val_loss)
+            LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_loss=val_loss)
 
         # reduce learning rate if needed
         lr_scheduler.step(val_loss)
+        monitor.write(model, e, train={"lr": optimizer.param_groups[0]['lr']})
 
 monitor.close()
-print("best validation error rate (epoch {}): {}\n".format(best_e, best_val_loss))
+print("best validation loss (epoch {}): {}\n".format(best_e, best_val_loss))
 
-model = LTClassifier.load_model(save_dir)
-test_loss = evaluate(testloader, model, eval_criterion)
-print("test error rate (model of epoch {}): {}\n".format(best_e, test_loss))
+model = LTRegressor.load_model(save_dir)
+test_loss = evaluate(testloader, model, criterion)
+print("test error loss (model of epoch {}): {}\n".format(best_e, test_loss))
 
+score, _ = LT_dendrogram_purity(data.X_test_in, data.y_test, model, model.latent_tree.bst, num_classes)
+print("Epoch %i: validation purity = %f\n" % (e, score))

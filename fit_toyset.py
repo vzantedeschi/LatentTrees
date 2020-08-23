@@ -16,12 +16,12 @@ from src.utils import make_directory
 
 DISTR = "xor"
 N = 100
-TREE_DEPTH = 3
+TREE_DEPTH = 2
 LR = 0.1
 ITER = 1e4
 REG = 0
 NORM = float('inf')
-SAVE_DIR = f"./results/optree/{DISTR}/depth={TREE_DEPTH}/"
+SAVE_DIR = f"./results/{DISTR}/optree/depth={TREE_DEPTH}/"
 make_directory(SAVE_DIR)
 
 SEED = 2020

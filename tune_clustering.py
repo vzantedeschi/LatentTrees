@@ -3,7 +3,7 @@ import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 
-from torch.nn import CrossEntropyLoss
+from torch.nn import MSELoss
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
@@ -11,7 +11,7 @@ import optuna
 
 from qhoptim.pyt import QHAdam
 
-from src.LT_models import LTClassifier
+from src.LT_models import LTRegressor
 from src.metrics import LT_dendrogram_purity
 from src.monitors import MonitorTree
 from src.optimization import train_stochastic, evaluate
@@ -20,39 +20,47 @@ from src.utils import make_directory, TorchDataset
 
 SEED = 1337
 DATA_NAME = "GLASS"
+TREE_DEPTH = 5
+REG = 800
 LR = 0.2
 BATCH_SIZE = 128 
 EPOCHS = int(1e4)
 
+in_features = [0, 1]
+out_features = list(range(2, 9))
+
 data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
-in_features = data.X_train.shape[1]
 classes = np.unique(data.y_train)
 num_classes = max(classes) + 1
-print(classes)
 
-trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, shuffle=True)
+data.X_train_in, data.X_valid_in, data.X_test_in = data.X_train[:, in_features], data.X_valid[:, in_features], data.X_test[:, in_features]
+data.X_train_out, data.X_valid_out, data.X_test_out = data.X_train[:, out_features], data.X_valid[:, out_features], data.X_test[:, out_features]
+
+trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out), batch_size=BATCH_SIZE, shuffle=True)
+valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_train_out), batch_size=BATCH_SIZE*2, shuffle=False)
 
 def objective(trial):
 
-    TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 1, 12)
+    TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 2, 8)
     REG = trial.suggest_uniform('REG', 0, 1e3)
-
-    save_dir = Path("./results/clustering/") / DATA_NAME / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
-    make_directory(save_dir)
 
     pruning = REG > 0
 
-    model = LTClassifier(TREE_DEPTH, in_features, num_classes, pruned=pruning)
+    save_dir = Path("./results/optuna/clustering-selfsup/") / DATA_NAME / "in-feats=[0,1]/depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
+    make_directory(save_dir)
+
+    model = LTRegressor(TREE_DEPTH, len(in_features), len(out_features), pruned=pruning)
 
     # init optimizer
     optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.998))
 
-
     # init learning rate scheduler
-    lr_scheduler = ReduceLROnPlateau(optimizer, 'max', factor=0.1, patience=2)
+    lr_scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=3)
 
     # init loss
-    criterion = CrossEntropyLoss(reduction="sum")
+    criterion = MSELoss(reduction="sum")
+
+    eval_criterion = lambda x, y: (x != y).sum()
 
     # init train-eval monitoring 
     monitor = MonitorTree(pruning, save_dir)
@@ -63,11 +71,12 @@ def objective(trial):
         'learning-rate': LR,
         'seed': SEED,
         'bst_depth': TREE_DEPTH,
-        'in_size': in_features,
-        'num_classes': num_classes,
+        'in_size': len(in_features),
+        'out_size': len(out_features),
         'pruned': pruning,
         'dataset': DATA_NAME,
         'reg': REG,
+        'linear': True,
     }
 
     best_val_score = 0
@@ -76,18 +85,23 @@ def objective(trial):
         train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor, prog_bar=False)
 
         if e % 100 == 0:
-            score, _ = LT_dendrogram_purity(data.X_valid, data.y_valid, model, num_classes)
-            print("Epoch %i: validation purity = %f\n" % (e, score))
+            val_loss = evaluate(valloader, model, criterion, epoch=e, monitor=monitor)
+            score, _ = LT_dendrogram_purity(data.X_valid_in, data.y_valid, model, model.latent_tree.bst, num_classes)
+
+            print("Epoch %i: validation loss = %f; validation purity = %f\n" % (e, val_loss, score))
+
+            monitor.write(model, e, val={"Dendrogram Purity": score})
 
             if score >= best_val_score:
                 best_val_score = score
                 best_e = e
-                LTClassifier.save_model(model, optimizer, state, save_dir, epoch=e, val_dp=score)
+                LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_loss=val_loss, val_dp=score)
 
             # reduce learning rate if needed
-            lr_scheduler.step(score)
+            lr_scheduler.step(val_loss)
+            monitor.write(model, e, train={"lr": optimizer.param_groups[0]['lr']})
 
-    monitor.close()
+    monitor.close()          
 
     return best_val_score
 
@@ -101,3 +115,4 @@ if __name__ == "__main__":
     df = study.trials_dataframe(attrs=('number', 'value', 'params', 'state'))
 
     print(df)
+    df.to_csv("./results/optuna/clustering-selfsup/GLASS/.csv")
