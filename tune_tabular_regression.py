@@ -16,15 +16,14 @@ from src.optimization import train_stochastic, evaluate
 from src.tabular_datasets import Dataset
 from src.utils import make_directory, TorchDataset
 
-SEED = 1337
-DATA_NAME = "MICROSOFT"
-LR = 0.0001
+SEED = 1225
+DATA_NAME = "YAHOO"
+LR = 0.1
 BATCH_SIZE = 512 
 EPOCHS = 20
 LINEAR = False
 
-# load dataset with same configuration as in https://github.com/Qwicen/node/blob/master/notebooks/year_node_shallow.ipynb
-data = Dataset(DATA_NAME, random_state=SEED, quantile_transform=True, quantile_noise=1e-3, normalize=True)
+data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
 in_features = data.X_train.shape[1]
 out_features = 1
 
@@ -35,18 +34,22 @@ data.y_train, data.y_valid, data.y_test = map(normalize, [data.y_train, data.y_v
 
 print("mean = %.5f, std = %.5f" % (mu, std))
 
+root_dir = Path("./results/optuna/tabular/") / "{}/linear={}/".format(DATA_NAME, LINEAR)
+
 trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, num_workers=12, shuffle=True)
 valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATCH_SIZE*2, num_workers=12, shuffle=False)
 
 def objective(trial):
 
-    TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 1, 12)
+    TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 2, 8)
     REG = trial.suggest_uniform('REG', 0, 1e3)
+    MLP_LAYERS = trial.suggest_int('MLP_LAYERS', 2, 7)
+    DROPOUT = trial.suggest_uniform('DROPOUT', 0.0, 0.5)
 
     pruning = REG > 0
-    save_dir = Path("./results/optuna/") / DATA_NAME / "linear={}/depth={}/reg={}/seed={}".format(LINEAR, TREE_DEPTH, REG, SEED)
+    save_dir = root_dir / "depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
     make_directory(save_dir)
-    model = LTRegressor(TREE_DEPTH, in_features, out_features, pruned=pruning, linear=LINEAR)
+    model = LTRegressor(TREE_DEPTH, in_features, out_features, pruned=pruning, linear=LINEAR, layers=MLP_LAYERS, dropout=DROPOUT)
 
     # init optimizer
     optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.998))
@@ -69,6 +72,9 @@ def objective(trial):
         'tree-depth': TREE_DEPTH,
         'dataset': DATA_NAME,
         'reg': REG,
+        'linerar': LINEAR,
+        'layers': MLP_LAYERS,
+        'dropout': DROPOUT,
     }
 
     best_val_loss = float("inf")
@@ -106,4 +112,5 @@ if __name__ == "__main__":
     df = study.trials_dataframe(attrs=('number', 'value', 'params', 'state'))
 
     print(df)
+    df.to_csv(root_dir / 'trials.csv')
 

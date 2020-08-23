@@ -23,17 +23,29 @@ class Linear(torch.nn.Module):
 
 class MLP(torch.nn.Module):
     
-    def __init__(self, in_size, out_size):
+    def __init__(self, in_size, out_size, layers=1, dropout=0.):
         
         super(MLP, self).__init__()
-
-        self.net = torch.nn.Sequential(
-                torch.nn.Linear(in_size, in_size*2),
-                torch.nn.ELU(),
-                torch.nn.Linear(in_size*2, in_size),
-                torch.nn.ELU(),
-                torch.nn.Linear(in_size, out_size),
-            )
+        
+        if layers == 1:
+            units = [(in_size, out_size)]
+        else:
+            units = [(in_size, 64)]
+            for i in range(1, layers - 1):
+                units.append((units[-1][1], units[-1][1] * 2))
+            units.append((units[-1][1], out_size))
+        
+        self.layers = []
+        for i, u in enumerate(units):
+            self.layers.append(torch.nn.Linear(*u))
+            
+            if i < layers - 1: # end the model with a linear layer
+                self.layers.append(torch.nn.ELU())
+                
+                if dropout > 0.:
+                    self.layers.append(torch.nn.Dropout(dropout))
+        
+        self.net = torch.nn.Sequential(*self.layers)
 
     def forward(self, x):
         
@@ -231,7 +243,7 @@ class LTClassifier(LTBinaryClassifier):
 
 class LTRegressor(torch.nn.Module):
 
-    def __init__(self, bst_depth, in_size, out_size, pruned=True, linear=True):
+    def __init__(self, bst_depth, in_size, out_size, pruned=True, linear=True, **kwargs):
 
         super(LTRegressor, self).__init__()
 
@@ -242,7 +254,7 @@ class LTRegressor(torch.nn.Module):
         if linear:
             self.predictor = Linear(in_size + 1 + self.latent_tree.bst.nb_nodes, out_size)
         else:
-            self.predictor = MLP(in_size + 1 + self.latent_tree.bst.nb_nodes, out_size)
+            self.predictor = MLP(in_size + 1 + self.latent_tree.bst.nb_nodes, out_size, **kwargs)
 
     def eval(self):
         self.latent_tree.eval()
