@@ -2,6 +2,9 @@ import numpy as np
 
 from pathlib import Path
 
+import gzip
+import shutil
+
 from sklearn.datasets import make_swiss_roll
 from sklearn.model_selection import train_test_split
 
@@ -62,6 +65,33 @@ def fetch_GLASS(path, valid_size=0.2, test_size=0.2, rnd_state=1):
     data = np.genfromtxt(data_path, delimiter=',')
     
     X, Y = (data[:, 1:-1]).astype(np.float32), (data[:, -1] - 1).astype(int)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=rnd_state)
+
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=rnd_state)
+
+    return dict(
+        X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
+    )
+
+def fetch_COVTYPE(path, valid_size=0.2, test_size=0.2, rnd_state=1):
+
+    path = Path(path)
+    data_path = path / 'covtype.data'
+
+    if not data_path.exists():
+        path.mkdir(parents=True)
+        archive_path = path / 'covtype.data.gz'
+        download('https://archive.ics.uci.edu/ml/machine-learning-databases/covtype/covtype.data.gz', archive_path)
+
+        with gzip.open(archive_path, 'rb') as f_in:
+
+            with open(data_path, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+
+    data = np.genfromtxt(data_path, delimiter=',')
+    
+    X, Y = (data[:, :-1]).astype(np.float32), (data[:, -1] - 1).astype(int)
 
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=rnd_state)
 
