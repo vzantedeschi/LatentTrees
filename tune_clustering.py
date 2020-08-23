@@ -20,15 +20,14 @@ from src.utils import make_directory, TorchDataset
 
 SEED = 1337
 DATA_NAME = "GLASS"
-TREE_DEPTH = 5
-REG = 800
 LR = 0.2
 BATCH_SIZE = 128 
-EPOCHS = int(1e4)
+EPOCHS = int(3e3)
 
-in_features = [0, 1]
-out_features = list(range(2, 9))
+in_features = list(range(7))
+out_features = list(set(range(9)) - set(in_features))
 
+root_dir = Path("./results/optuna/clustering-selfsup/") / "{}/in-feats={}/".format(DATA_NAME, in_features)
 data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
 classes = np.unique(data.y_train)
 num_classes = max(classes) + 1
@@ -46,7 +45,7 @@ def objective(trial):
 
     pruning = REG > 0
 
-    save_dir = Path("./results/optuna/clustering-selfsup/") / DATA_NAME / "in-feats=[0,1]/depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
+    save_dir = root_dir / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
     make_directory(save_dir)
 
     model = LTRegressor(TREE_DEPTH, len(in_features), len(out_features), pruned=pruning)
@@ -115,4 +114,4 @@ if __name__ == "__main__":
     df = study.trials_dataframe(attrs=('number', 'value', 'params', 'state'))
 
     print(df)
-    df.to_csv("./results/optuna/clustering-selfsup/GLASS/.csv")
+    df.to_csv(root_dir / "trials.csv")
