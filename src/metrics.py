@@ -36,8 +36,10 @@ def dendrogram_purity(bst, pred_y, true_y, purity, nb_classes):
         for c in range(nb_classes):
 
             c_point_leaves = leaves[true_y == c]
-            num_pairs += sum(c_point_leaves == n1) * sum(c_point_leaves == n2)
-            score += purity[c, a] * sum(c_point_leaves == n1) * sum(c_point_leaves == n2)
+            c_pairs = sum(c_point_leaves == n1) * sum(c_point_leaves == n2)
+            
+            num_pairs += c_pairs
+            score += purity[c, a] * c_pairs
 
     return score / num_pairs
 
