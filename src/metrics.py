@@ -43,6 +43,35 @@ def dendrogram_purity(bst, pred_y, true_y, purity, nb_classes):
 
     return score / num_pairs
 
+def node_statistics(X, model):
+
+    x = torch.from_numpy(X).float()
+    
+    # get tree representation of test points
+    zs, _ = model.predict_bst(x)
+
+    x = torch.cat((x, torch.ones((len(x), 1))), 1)
+    XA = torch.mm(x, model.latent_tree.A.T)
+
+    # std of points assigned to each node
+    stds = []
+    for z_t in zs.T:
+        stds.append(np.std(X[z_t > 0]))
+
+    # distance from decision boundaries of points assigned to each node
+    split_dists = (XA / torch.norm(model.latent_tree.A[:, :-1], dim=1, p=2)).detach().numpy()
+    all_dists = np.zeros(zs.shape)
+    all_dists[:, model.latent_tree.bst.desc_left] = split_dists
+    all_dists[:, model.latent_tree.bst.desc_right] = split_dists
+
+    dist_medians, dist_means = [], []
+    for z_t, dist_t in zip(zs.T, all_dists.T):
+        dist_medians.append(np.median(dist_t[z_t > 0]))
+        dist_means.append(np.mean(dist_t[z_t > 0]))
+
+    return np.stack(dist_medians), np.stack(dist_means), np.stack(stds)
+
+
 if __name__ == "__main__":
 
     from math import isclose

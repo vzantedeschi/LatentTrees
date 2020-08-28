@@ -19,11 +19,11 @@ ITER = 1e4
 REG = 0
 LINEARREGR = False
 
-SAVE_DIR = f"./results/{DISTR}/lin={LINEARREGR}-reg={REG}/"
-
 SEED = 2020
 np.random.seed(SEED)
 torch.manual_seed(SEED)
+
+SAVE_DIR = f"./results/{DISTR}/linear={LINEARREGR}/depth={TREE_DEPTH}/reg={REG}/seed={SEED}"
 
 pruning = REG > 0
 nb_nodes = (2**(TREE_DEPTH + 1) - 1)
@@ -56,6 +56,19 @@ xx, yy = np.meshgrid(np.arange(x1_min, x1_max, H), np.arange(x2_min, x2_max, H))
 test_x = np.c_[xx.ravel(), yy.ravel()]
 test_x = torch.from_numpy(test_x).float()
 
+state = {
+    'loss-function': 'MSE',
+    'learning-rate': LR,
+    'seed': SEED,
+    'bst_depth': TREE_DEPTH,
+    'in_size': 2,
+    'out_size': 1,
+    'pruned': pruning,
+    'dataset': DISTR,
+    'reg': REG,
+    'linear': LINEARREGR
+}
+
 model.train()
 
 pbar = tqdm(range(int(ITER)))
@@ -75,6 +88,7 @@ for i in pbar:
 
     monitor.write(model, i, train={"MSELoss": loss.detach()})
 
+LTRegressor.save_model(model, optimizer, state, SAVE_DIR, iter=ITER, loss=loss)
 model.eval()
 
 # estimate learned class boundaries
