@@ -13,22 +13,23 @@ from src.optimization import train_stochastic, evaluate
 from src.tabular_datasets import Dataset
 from src.utils import make_directory, TorchDataset
 
-SEED = 1337
-DATA_NAME = "MICROSOFT"
-TREE_DEPTH = 10
-REG = 4.6413141239
-LR = 0.0001
+SEED = 1225
+DATA_NAME = "YEAR"
+TREE_DEPTH = 3
+REG = 561.7353202746074
+MLP_LAYERS = 3
+DROPOUT = 0.07600075080048799
+
+LR = 0.01
 BATCH_SIZE = 512 
 EPOCHS = 1
-LINEAR = False
 
-save_dir = Path("./results/tab-datasets/") / DATA_NAME / "linear={}/depth={}/reg={}/seed={}".format(LINEAR, TREE_DEPTH, REG, SEED)
+save_dir = Path("./results/tabular/") / DATA_NAME / "depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
 make_directory(save_dir)
 
 pruning = REG > 0
 
-# load dataset with same configuration as in https://github.com/Qwicen/node/blob/master/notebooks/year_node_shallow.ipynb
-data = Dataset(DATA_NAME, random_state=SEED, quantile_transform=True, quantile_noise=1e-3, normalize=True)
+data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
 in_features = data.X_train.shape[1]
 out_features = 1
 

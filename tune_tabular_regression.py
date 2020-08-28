@@ -18,9 +18,9 @@ from src.utils import make_directory, TorchDataset
 
 SEED = 1225
 DATA_NAME = "YAHOO"
-LR = 0.1
+LR = 0.01
 BATCH_SIZE = 512 
-EPOCHS = 20
+EPOCHS = 100
 LINEAR = False
 
 data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
