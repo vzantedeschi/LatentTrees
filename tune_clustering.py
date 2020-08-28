@@ -98,6 +98,12 @@ def objective(trial):
             lr_scheduler.step(val_loss['MSE'])
             monitor.write(model, e, train={"lr": optimizer.param_groups[0]['lr']})
 
+            trial.report(score, e)
+            # Handle pruning based on the intermediate value.
+            if trial.should_prune() or np.isnan(val_loss):
+                monitor.close()
+                raise optuna.TrialPruned()
+
     monitor.close()         
 
     return best_val_score
