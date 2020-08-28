@@ -19,13 +19,13 @@ from src.tabular_datasets import Dataset
 from src.utils import make_directory, TorchDataset
 
 SEED = 1337
-DATA_NAME = "GLASS"
+DATA_NAME = "COVTYPE"
 LR = 0.2
 BATCH_SIZE = 128 
 EPOCHS = int(3e3)
 
-in_features = list(range(7))
-out_features = list(set(range(9)) - set(in_features))
+out_features = [3, 4]
+in_features = list(set(range(54)) - set(out_features))
 
 root_dir = Path("./results/optuna/clustering-selfsup/") / "{}/in-feats={}/".format(DATA_NAME, in_features)
 data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
@@ -59,14 +59,12 @@ def objective(trial):
     # init loss
     criterion = MSELoss(reduction="sum")
 
-    eval_criterion = lambda x, y: (x != y).sum()
-
     # init train-eval monitoring 
     monitor = MonitorTree(pruning, save_dir)
 
     state = {
         'batch-size': BATCH_SIZE,
-        'loss-function': 'CE',
+        'loss-function': 'MSE',
         'learning-rate': LR,
         'seed': SEED,
         'bst_depth': TREE_DEPTH,
@@ -80,27 +78,26 @@ def objective(trial):
 
     best_val_score = 0
     best_e = -1
-    for e in tqdm(range(EPOCHS)):
-        train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor, prog_bar=False)
+    for e in range(EPOCHS):
+        train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
 
-        if e % 100 == 0:
-            val_loss = evaluate(valloader, model, criterion, epoch=e, monitor=monitor)
-            score, _ = LT_dendrogram_purity(data.X_valid_in, data.y_valid, model, model.latent_tree.bst, num_classes)
+        val_loss = evaluate(valloader, model, {'MSE': criterion}, epoch=e, monitor=monitor)
+        score, _ = LT_dendrogram_purity(data.X_valid_in, data.y_valid, model, model.latent_tree.bst, num_classes)
 
-            print("Epoch %i: validation loss = %f; validation purity = %f\n" % (e, val_loss, score))
+        print("Epoch %i: validation mse = %f; validation purity = %f\n" % (e, val_loss['MSE'], score))
 
-            monitor.write(model, e, val={"Dendrogram Purity": score})
+        monitor.write(model, e, val={"Dendrogram Purity": score})
 
-            if score >= best_val_score:
-                best_val_score = score
-                best_e = e
-                LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_loss=val_loss, val_dp=score)
+        if score >= best_val_score:
+            best_val_score = score
+            best_e = e
+            LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_mse=val_loss['MSE'], val_dp=score)
 
-            # reduce learning rate if needed
-            lr_scheduler.step(val_loss)
-            monitor.write(model, e, train={"lr": optimizer.param_groups[0]['lr']})
+        # reduce learning rate if needed
+        lr_scheduler.step(val_loss['MSE'])
+        monitor.write(model, e, train={"lr": optimizer.param_groups[0]['lr']})
 
-    monitor.close()          
+    monitor.close()         
 
     return best_val_score
 
