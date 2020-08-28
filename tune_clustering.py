@@ -22,7 +22,7 @@ SEED = 1337
 DATA_NAME = "COVTYPE"
 LR = 0.2
 BATCH_SIZE = 128 
-EPOCHS = int(3e3)
+EPOCHS = 100
 
 out_features = [3, 4]
 in_features = list(set(range(54)) - set(out_features))
@@ -80,22 +80,23 @@ def objective(trial):
     best_e = -1
     for e in range(EPOCHS):
         train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
+        
+        if e % 10 == 0 or e == EPOCHS - 1:
+            val_loss = evaluate(valloader, model, {'MSE': criterion}, epoch=e, monitor=monitor)
+            score, _ = LT_dendrogram_purity(data.X_valid_in, data.y_valid, model, model.latent_tree.bst, num_classes)
 
-        val_loss = evaluate(valloader, model, {'MSE': criterion}, epoch=e, monitor=monitor)
-        score, _ = LT_dendrogram_purity(data.X_valid_in, data.y_valid, model, model.latent_tree.bst, num_classes)
+            print("Epoch %i: validation mse = %f; validation purity = %f\n" % (e, val_loss['MSE'], score))
 
-        print("Epoch %i: validation mse = %f; validation purity = %f\n" % (e, val_loss['MSE'], score))
+            monitor.write(model, e, val={"Dendrogram Purity": score})
 
-        monitor.write(model, e, val={"Dendrogram Purity": score})
+            if score >= best_val_score:
+                best_val_score = score
+                best_e = e
+                LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_mse=val_loss['MSE'], val_dp=score)
 
-        if score >= best_val_score:
-            best_val_score = score
-            best_e = e
-            LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_mse=val_loss['MSE'], val_dp=score)
-
-        # reduce learning rate if needed
-        lr_scheduler.step(val_loss['MSE'])
-        monitor.write(model, e, train={"lr": optimizer.param_groups[0]['lr']})
+            # reduce learning rate if needed
+            lr_scheduler.step(val_loss['MSE'])
+            monitor.write(model, e, train={"lr": optimizer.param_groups[0]['lr']})
 
     monitor.close()         
 

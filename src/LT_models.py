@@ -23,7 +23,7 @@ class Linear(torch.nn.Module):
 
 class MLP(torch.nn.Module):
     
-    def __init__(self, in_size, out_size, layers=1, dropout=0.):
+    def __init__(self, in_size, out_size, layers=1, dropout=0., **kwargs):
         
         super(MLP, self).__init__()
         
@@ -295,7 +295,7 @@ class LTRegressor(torch.nn.Module):
 
         checkpoint = torch.load(Path(load_dir) / 'model.t7')
         
-        model = LTRegressor(checkpoint['bst_depth'], checkpoint['in_size'], checkpoint['out_size'], checkpoint['pruned'], checkpoint['linear'])
+        model = LTRegressor(**checkpoint)
         model.load_state_dict(checkpoint['model_state_dict'])
 
         if 'optimizer' in kwargs.keys():

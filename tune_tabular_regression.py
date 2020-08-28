@@ -17,7 +17,7 @@ from src.tabular_datasets import Dataset
 from src.utils import make_directory, TorchDataset
 
 SEED = 1225
-DATA_NAME = "YAHOO"
+DATA_NAME = "MICROSOFT"
 LR = 0.01
 BATCH_SIZE = 512 
 EPOCHS = 100
