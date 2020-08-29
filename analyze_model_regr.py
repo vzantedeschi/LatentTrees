@@ -15,8 +15,9 @@ from src.optimization import evaluate
 from src.utils import TorchDataset
 
 # LOAD_DIR = "./results/tab-datasets/HIGGS/depth=5/reg=0/seed=1337/"
-LOAD_DIR = "./results/reg-xor/linear=False/depth=2/reg=0/seed=2020/"
+# LOAD_DIR = "./results/reg-xor/linear=False/depth=2/reg=0/seed=2020/"
 # LOAD_DIR = "./results/clustering/GLASS/depth=4/reg=0/seed=1337/"
+LOAD_DIR = "./results/tabular/YEAR/depth=3/reg=561.7353202746074/mlp-layers=3/dropout=0.07600075080048799/seed=1225/"
 
 model = LTRegressor.load_model(LOAD_DIR)
 
@@ -30,27 +31,26 @@ if 'reg-xor' in LOAD_DIR:
     X, Y = toy_dataset(100, 'xor')
 
 else:
-    DATA_NAME = LOAD_DIR.split('/')[-5]
+    DATA_NAME = LOAD_DIR.split('/')[3]
     SEED = int(LOAD_DIR.split('/')[-2][5:])
 
     data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
 
     X, Y = data.X_test, data.y_test
 
-    testloader = DataLoader(TorchDataset(X, Y), batch_size=1024, shuffle=False)
+    # testloader = DataLoader(TorchDataset(X, Y), batch_size=1024, shuffle=False)
 
-    criterion = MSELoss(reduction="sum")
+    # criterion = MSELoss(reduction="sum")
 
-    test_loss = evaluate(testloader, model, lambda x, y: (x != y).sum())
-    print(f"test MSE: {test_loss}\n")
+    # test_loss = evaluate(testloader, model, {criterion)
+    # print(f"test MSE: {test_loss}\n")
 
-medians, means, stds = node_statistics(X, model)
+medians, means, stds, y_modes, y_means, y_stds = node_statistics(X, Y, model)
 
 # build graph for visualization
 G = nx.from_numpy_array(model.latent_tree.bst.to_adj_matrix())
 pos = graphviz_layout(G, prog='dot')
 
-# plot a tree per class
 for name, stat in {'median': medians, 'mean': means}.items():
 
     plt.title(f'Distance from decision boundaries: {name}')
@@ -68,3 +68,13 @@ nx.draw_networkx_labels(G, pos, font_size=6, labels={i: np.round(d, decimals=2) 
 
 plt.savefig(f'{LOAD_DIR}stat-std.png')
 plt.clf()
+
+for name, stat in {'mean': y_means, 'mode': y_modes, 'std': y_stds}.items():
+
+    plt.title(f'Target value statistics: {name}')
+
+    nx.draw(G, pos, arrows=True, node_color=stat, cmap=plt.cm.viridis, alpha=0.5)
+    nx.draw_networkx_labels(G, pos, font_size=6, labels={i: np.round(d, decimals=2) for i, d in enumerate(stat)})
+
+    plt.savefig(f'{LOAD_DIR}stat-y-{name}.png')
+    plt.clf()
