@@ -135,11 +135,39 @@ class LatentTree(torch.nn.Module):
 
 # ------------------------------------------------------------------------------- NN MODELS
 
-class TorchModel(torch.nn.Module):
+class LTModel(torch.nn.Module):
 
     def __init__(self):
 
         torch.nn.Module.__init__(self)
+
+    def train(self):
+        self.latent_tree.train()
+        self.predictor.train()
+
+    def eval(self):
+        self.latent_tree.eval()
+        self.predictor.eval() 
+
+    def parameters(self):
+        return list(self.latent_tree.parameters()) + list(self.predictor.parameters())
+
+    def forward(self, X):
+        
+        # add offset
+        x = torch.cat((X, torch.ones((len(X), 1))), 1)
+
+        z = self.latent_tree(x)
+
+        xz = torch.cat((x, z), 1)
+
+        return self.predictor(xz)
+
+    def predict_bst(self, X):
+
+        x = torch.cat((X, torch.ones((len(X), 1))), 1)
+
+        return self.latent_tree.predict(x)
 
     @classmethod
     def load_model(cls, load_dir, **kwargs):
@@ -169,7 +197,7 @@ class TorchModel(torch.nn.Module):
 
         torch.save(state, Path(save_dir) / 'model.t7')
 
-class LTBinaryClassifier(TorchModel):
+class LTBinaryClassifier(LTModel):
 
     def __init__(self, bst_depth, in_size, pruned=True, **kwargs):
 
@@ -184,24 +212,6 @@ class LTBinaryClassifier(TorchModel):
         # init predictor ( [x;z]-> y )
         self.predictor = LogisticRegression(in_size + 1 + self.latent_tree.bst.nb_nodes, 1)
 
-    def eval(self):
-        self.latent_tree.eval()
-        self.predictor.eval()
-
-    def forward(self, X):
-        
-        # add offset
-        x = torch.cat((X, torch.ones((len(X), 1))), 1)
-
-        z = self.latent_tree(x)
-
-        xz = torch.cat((x, z), 1)
-
-        return self.predictor(xz)
-
-    def parameters(self):
-        return list(self.latent_tree.parameters()) + list(self.predictor.parameters())
-
     def predict(self, X):
 
         y_pred = self.forward(X)
@@ -209,17 +219,6 @@ class LTBinaryClassifier(TorchModel):
         y_pred[y_pred <= 0.5] = 0
 
         return y_pred.detach()
-
-    def predict_bst(self, X):
-
-        # add offset
-        x = torch.cat((X, torch.ones((len(X), 1))), 1)
-
-        return self.latent_tree.predict(x)
-
-    def train(self):
-        self.latent_tree.train()
-        self.predictor.train()
 
 class LTClassifier(LTBinaryClassifier):
 
@@ -229,7 +228,7 @@ class LTClassifier(LTBinaryClassifier):
 
         self.params = locals()
         del self.params['self']
-        
+
         # init latent tree optimizer (x -> z)
         self.latent_tree = LatentTree(bst_depth, in_size + 1, pruned)
 
@@ -243,7 +242,7 @@ class LTClassifier(LTBinaryClassifier):
 
         return y_pred.detach()
 
-class LTRegressor(TorchModel):
+class LTRegressor(LTModel):
 
     def __init__(self, bst_depth, in_size, out_size, pruned=True, linear=True, **kwargs):
 
@@ -261,36 +260,8 @@ class LTRegressor(TorchModel):
         else:
             self.predictor = MLP(in_size + 1 + self.latent_tree.bst.nb_nodes, out_size, **kwargs)
 
-    def eval(self):
-        self.latent_tree.eval()
-        self.predictor.eval()
-
-    def forward(self, X):
-        
-        # add offset
-        x = torch.cat((X, torch.ones((len(X), 1))), 1)
-
-        z = self.latent_tree(x)
-
-        xz = torch.cat((x, z), 1)
-
-        return self.predictor(xz)
-
-    def parameters(self):
-        return list(self.latent_tree.parameters()) + list(self.predictor.parameters())
-
     def predict(self, X):
 
         y_pred = self.forward(X)
 
         return y_pred.detach()
-
-    def predict_bst(self, X):
-
-        x = torch.cat((X, torch.ones((len(X), 1))), 1)
-
-        return self.latent_tree.predict(x)
-
-    def train(self):
-        self.latent_tree.train()
-        self.predictor.train()
