@@ -3,8 +3,8 @@ SEED: 2020
 model:
   TYPE: LT
   BST_DEPTH: 2
-  LR: 0.1
-  ITER: 1e3
+  LR: 0.5
+  ITER: 1e4
   REG: 0
 
 dataset:
