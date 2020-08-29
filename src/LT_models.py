@@ -65,7 +65,7 @@ class LogisticRegression(torch.nn.Module):
         
         return y_pred
 
-# ----------------------------------------------------------------------- LATENT TREES REGRESSION
+# ----------------------------------------------------------------------- LATENT TREE LAYER
 
 class LatentTree(torch.nn.Module):
 
@@ -133,11 +133,50 @@ class LatentTree(torch.nn.Module):
 
         return q
 
-class LTBinaryClassifier(torch.nn.Module):
+# ------------------------------------------------------------------------------- NN MODELS
 
-    def __init__(self, bst_depth, in_size, pruned=True):
+class TorchModel(torch.nn.Module):
+
+    def __init__(self):
+
+        torch.nn.Module.__init__(self)
+
+    @classmethod
+    def load_model(cls, load_dir, **kwargs):
+
+        checkpoint = torch.load(Path(load_dir) / 'model.t7')
+        
+        model = cls(**checkpoint)
+        model.load_state_dict(checkpoint['model_state_dict'])
+
+        if 'optimizer' in kwargs.keys():
+            kwargs['optimizer'].load_state_dict(checkpoint['optimizer_state_dict'])
+
+        return model
+  
+    def save_model(self, optimizer, state, save_dir, **kwargs):
+
+        try:
+            state_dict = self.module.state_dict()
+
+        except AttributeError:
+            state_dict = self.state_dict()
+
+        state['model_state_dict'] = state_dict
+        state['optimizer_state_dict'] = optimizer.state_dict()
+        state.update(self.params)
+        state.update(kwargs)
+
+        torch.save(state, Path(save_dir) / 'model.t7')
+
+class LTBinaryClassifier(TorchModel):
+
+    def __init__(self, bst_depth, in_size, pruned=True, **kwargs):
 
         super(LTBinaryClassifier, self).__init__()
+
+        self.params = locals()
+        del self.params['self']
 
         # init latent tree optimizer (x -> z)
         self.latent_tree = LatentTree(bst_depth, in_size + 1, pruned)
@@ -182,39 +221,15 @@ class LTBinaryClassifier(torch.nn.Module):
         self.latent_tree.train()
         self.predictor.train()
 
-    @staticmethod
-    def load_model(load_dir, **kwargs):
-
-        checkpoint = torch.load(Path(load_dir) / 'model.t7')
-        
-        model = LTBinaryClassifier(checkpoint['bst_depth'], checkpoint['in_size'], checkpoint['pruned'])
-        model.load_state_dict(checkpoint['model_state_dict'])
-
-        if 'optimizer' in kwargs.keys():
-            kwargs['optimizer'].load_state_dict(checkpoint['optimizer_state_dict'])
-
-        return model
-  
-    def save_model(self, optimizer, state, save_dir, **kwargs):
-
-        try:
-            state_dict = self.module.state_dict()
-
-        except AttributeError:
-            state_dict = self.state_dict()
-
-        state['model_state_dict'] = state_dict
-        state['optimizer_state_dict'] = optimizer.state_dict()
-        state.update(kwargs)
-
-        torch.save(state, Path(save_dir) / 'model.t7')
-
 class LTClassifier(LTBinaryClassifier):
 
-    def __init__(self, bst_depth, in_size, num_classes, pruned=True):
+    def __init__(self, bst_depth, in_size, num_classes, pruned=True, **kwargs):
 
-        torch.nn.Module.__init__(self)
+        super(LTClassifier, self).__init__()
 
+        self.params = locals()
+        del self.params['self']
+        
         # init latent tree optimizer (x -> z)
         self.latent_tree = LatentTree(bst_depth, in_size + 1, pruned)
 
@@ -228,24 +243,14 @@ class LTClassifier(LTBinaryClassifier):
 
         return y_pred.detach()
 
-    @staticmethod
-    def load_model(load_dir, **kwargs):
-
-        checkpoint = torch.load(Path(load_dir) / 'model.t7')
-        
-        model = LTClassifier(checkpoint['bst_depth'], checkpoint['in_size'], checkpoint['num_classes'], checkpoint['pruned'])
-        model.load_state_dict(checkpoint['model_state_dict'])
-
-        if 'optimizer' in kwargs.keys():
-            kwargs['optimizer'].load_state_dict(checkpoint['optimizer_state_dict'])
-
-        return model
-
-class LTRegressor(torch.nn.Module):
+class LTRegressor(TorchModel):
 
     def __init__(self, bst_depth, in_size, out_size, pruned=True, linear=True, **kwargs):
 
         super(LTRegressor, self).__init__()
+
+        self.params = locals()
+        del self.params['self']
 
         # init latent tree optimizer (x -> z)
         self.latent_tree = LatentTree(bst_depth, in_size + 1, pruned)
@@ -289,30 +294,3 @@ class LTRegressor(torch.nn.Module):
     def train(self):
         self.latent_tree.train()
         self.predictor.train()
-
-    @staticmethod
-    def load_model(load_dir, **kwargs):
-
-        checkpoint = torch.load(Path(load_dir) / 'model.t7')
-        
-        model = LTRegressor(**checkpoint)
-        model.load_state_dict(checkpoint['model_state_dict'])
-
-        if 'optimizer' in kwargs.keys():
-            kwargs['optimizer'].load_state_dict(checkpoint['optimizer_state_dict'])
-
-        return model
-  
-    def save_model(self, optimizer, state, save_dir, **kwargs):
-
-        try:
-            state_dict = self.module.state_dict()
-
-        except AttributeError:
-            state_dict = self.state_dict()
-
-        state['model_state_dict'] = state_dict
-        state['optimizer_state_dict'] = optimizer.state_dict()
-        state.update(kwargs)
-
-        torch.save(state, Path(save_dir) / 'model.t7')
