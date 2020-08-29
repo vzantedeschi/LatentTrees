@@ -3,57 +3,40 @@ import torch
 
 from tqdm import tqdm
 
-from src.LT_models import LTBinaryClassifier
-from src.monitors import MonitorTree
-
-# Train LT Binary Classifier with gradient descent on full dataset
-def train_batch(x, y, bst_depth=2, nb_iter=1e4, lr=5e-1, reg=10, norm="inf", root_dir="runs/"):
+def train_batch(x, y, LT_model, optimizer, criterion, nb_iter=1e4, reg=10, norm=float("inf"), monitor=None):
 
     n, d = x.shape
 
     pruning = reg > 0
     
-    model = LTBinaryClassifier(bst_depth, d, pruned=pruning)
-    monitor = MonitorTree(pruning, "{}/norm={}/reg={}/".format(root_dir, norm, reg))
-
-    # init optimizer
-    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
-
-    # init loss
-    criterion = torch.nn.BCELoss(reduction="mean")
-
     # cast to pytorch Tensors
     t_y = torch.from_numpy(y[:, None]).float()
     t_x = torch.from_numpy(x).float()
 
-    model.train()
+    LT_model.train()
 
     pbar = tqdm(range(int(nb_iter)))
     for i in pbar:
 
-        # print(model.latent_tree.eta.detach().numpy())
+        # print(LT_model.latent_tree.eta.detach().numpy())
         optimizer.zero_grad()
 
-        y_pred = model(t_x)
+        y_pred = LT_model(t_x)
 
-        bce = criterion(y_pred, t_y)
+        loss = criterion(y_pred, t_y)
         if pruning:
-            loss = bce + reg * torch.norm(model.latent_tree.eta, p=norm)
-            pbar.set_description("train BCE + reg %s" % loss.detach().numpy())
+            obj = loss + reg * torch.norm(LT_model.latent_tree.eta, p=norm)
+            pbar.set_description("train loss + reg %s" % obj.detach().numpy())
 
         else:
-            loss = bce
-            pbar.set_description("train BCE %s" % loss.detach().numpy())
+            obj = loss
+            pbar.set_description("train loss %s" % loss.detach().numpy())
 
-        loss.backward()
+        obj.backward()
         
         optimizer.step()
 
-        monitor.write(model, i, train={"BCELoss": bce.detach()})
-
-    monitor.close()
-
-    return model, optimizer
+        monitor.write(LT_model, i, train={"Loss": loss.detach()})
 
 def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm=float("inf"), monitor=None, prog_bar=True):
 

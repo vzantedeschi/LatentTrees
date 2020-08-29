@@ -16,6 +16,7 @@ from src.baselines import OptTree
 from src.datasets import toy_dataset
 from src.LT_models import LTBinaryClassifier
 from src.metrics import LT_dendrogram_purity
+from src.monitors import MonitorTree
 from src.optimization import train_batch
 
 @hydra.main(config_path='config/default-xor.yaml')
@@ -37,9 +38,22 @@ def main(cfg):
 
     if cfg.model.TYPE == 'LT':
 
-        # train latent class tree and logistic regressor
-        model, optimizer = train_batch(X, Y, bst_depth=cfg.model.BST_DEPTH, nb_iter=cfg.model.ITER, lr=cfg.model.LR, reg=cfg.model.REG, norm=NORM, root_dir=SAVE_DIR)
+        pruning = cfg.model.REG > 0
 
+        # model = LTBinaryClassifier.load_model(SAVE_DIR) # to load a pretrained model instead
+        model = LTBinaryClassifier(cfg.model.BST_DEPTH, 2, pruned=pruning)
+
+        # init optimizer
+        optimizer = torch.optim.SGD(model.parameters(), lr=cfg.model.LR)
+
+        # init loss
+        criterion = torch.nn.BCELoss(reduction="mean")
+
+        monitor = MonitorTree(pruning, SAVE_DIR)
+
+        train_batch(X, Y, model, optimizer, criterion, nb_iter=cfg.model.ITER, reg=cfg.model.REG, norm=NORM, monitor=monitor)
+
+        monitor.close()
         # save model
         model.save_model(optimizer, dict(cfg), SAVE_DIR)
         bst = model.latent_tree.bst
