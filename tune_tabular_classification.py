@@ -36,15 +36,22 @@ def objective(trial):
 
     TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 2, 8)
     REG = trial.suggest_uniform('REG', 0, 1e3)
-    # MLP_LAYERS = trial.suggest_int('MLP_LAYERS', 2, 7)
-    # DROPOUT = trial.suggest_uniform('DROPOUT', 0.0, 0.5)
+
+    if not LINEAR:
+        MLP_LAYERS = trial.suggest_int('MLP_LAYERS', 2, 7)
+        DROPOUT = trial.suggest_uniform('DROPOUT', 0.0, 0.5)
 
     pruning = REG > 0
-    # save_dir = root_dir / "depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
-    save_dir = root_dir / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
-    save_dir.mkdir(parents=True, exist_ok=True)
 
-    model = LTBinaryClassifier(TREE_DEPTH, in_features, pruned=pruning, linear=LINEAR)
+    if LINEAR:
+        save_dir = root_dir / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
+        model = LTBinaryClassifier(TREE_DEPTH, in_features, pruned=pruning, linear=LINEAR)
+
+    else:
+        save_dir = root_dir / "depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
+        model = LTBinaryClassifier(TREE_DEPTH, in_features, pruned=pruning, linear=LINEAR, layers=MLP_LAYERS, dropout=DROPOUT)
+
+    save_dir.mkdir(parents=True, exist_ok=True)
 
     # init optimizer
     optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.998))
