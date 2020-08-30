@@ -25,7 +25,7 @@ LINEAR = True
 
 data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
 in_features = data.X_train.shape[1]
-print(np.unique(data.y_test))
+print('classes', np.unique(data.y_test))
 
 trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, num_workers=12, shuffle=True)
 valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATCH_SIZE*2, num_workers=12, shuffle=False)
@@ -63,7 +63,7 @@ def objective(trial):
     criterion = BCELoss(reduction="sum")
 
     # evaluation criterion => error rate
-    eval_criterion = lambda x, y: (x != y).sum()
+    eval_criterion = lambda x, y: (x.long() != y.long()).sum()
 
     # init train-eval monitoring 
     monitor = MonitorTree(pruning, save_dir)
@@ -79,7 +79,7 @@ def objective(trial):
     best_val_loss = float("inf")
     best_e = -1
     for e in range(EPOCHS):
-        train_stochastic(trainloader, model, optimizer, {'BCE': criterion}, epoch=e, reg=REG, monitor=monitor)
+        train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
 
         val_loss = evaluate(valloader, model, {'ER': eval_criterion}, epoch=e, monitor=monitor)
 
