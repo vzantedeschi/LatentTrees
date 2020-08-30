@@ -53,15 +53,18 @@ class MLP(torch.nn.Module):
 
 class LogisticRegression(torch.nn.Module):
     
-    def __init__(self, in_size, out_size):
+    def __init__(self, in_size, out_size, linear, **kwargs):
         
         super(LogisticRegression, self).__init__()
 
-        self.linear = torch.nn.Linear(in_size, out_size)     
+        if linear:
+            self.net = Linear(in_size, out_size)
+        else:
+            self.net = MLP(in_size, out_size, **kwargs)   
 
     def forward(self, x):
 
-        y_pred = torch.sigmoid(self.linear(x))
+        y_pred = torch.sigmoid(self.net(x))
         
         return y_pred
 
@@ -199,7 +202,7 @@ class LTModel(torch.nn.Module):
 
 class LTBinaryClassifier(LTModel):
 
-    def __init__(self, bst_depth, in_size, pruned=True, **kwargs):
+    def __init__(self, bst_depth, in_size, pruned=True, linear=True, **kwargs):
 
         super(LTBinaryClassifier, self).__init__()
 
@@ -210,7 +213,7 @@ class LTBinaryClassifier(LTModel):
         self.latent_tree = LatentTree(bst_depth, in_size + 1, pruned)
 
         # init predictor ( [x;z]-> y )
-        self.predictor = LogisticRegression(in_size + 1 + self.latent_tree.bst.nb_nodes, 1)
+        self.predictor = LogisticRegression(in_size + 1 + self.latent_tree.bst.nb_nodes, 1, linear, **kwargs)
 
     def predict(self, X):
 
@@ -220,9 +223,9 @@ class LTBinaryClassifier(LTModel):
 
         return y_pred.detach()
 
-class LTClassifier(LTBinaryClassifier):
+class LTClassifier(LTModel):
 
-    def __init__(self, bst_depth, in_size, num_classes, pruned=True, **kwargs):
+    def __init__(self, bst_depth, in_size, num_classes, pruned=True, linear=True, **kwargs):
 
         super(LTClassifier, self).__init__()
 
@@ -233,7 +236,10 @@ class LTClassifier(LTBinaryClassifier):
         self.latent_tree = LatentTree(bst_depth, in_size + 1, pruned)
 
         # init predictor ( [x;z]-> y )
-        self.predictor = Linear(in_size + 1 + self.latent_tree.bst.nb_nodes, num_classes)
+        if linear:
+            self.predictor = Linear(in_size + 1 + self.latent_tree.bst.nb_nodes, num_classes)
+        else:
+            self.predictor = MLP(in_size + 1 + self.latent_tree.bst.nb_nodes, num_classes, **kwargs)
 
     def predict(self, X):
 
