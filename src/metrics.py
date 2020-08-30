@@ -51,9 +51,6 @@ def node_statistics(X, Y, model):
     # get tree representation of test points
     zs, _ = model.predict_bst(x)
 
-    x = torch.cat((x, torch.ones((len(x), 1))), 1)
-    XA = torch.mm(x, model.latent_tree.A.T)
-
     # std of points assigned to each node
     stds = []
     for z_t in zs.T:
@@ -67,7 +64,7 @@ def node_statistics(X, Y, model):
         y_modes.append(mode(Y[z_t > 0])[0][0])
 
     # distance from decision boundaries of points assigned to each node
-    split_dists = (XA / torch.norm(model.latent_tree.A[:, :-1], dim=1, p=2)).detach().numpy()
+    split_dists = model.db_distance(x).detach().numpy()
     all_dists = np.zeros(zs.shape)
     all_dists[:, model.latent_tree.bst.desc_left] = split_dists
     all_dists[:, model.latent_tree.bst.desc_right] = split_dists

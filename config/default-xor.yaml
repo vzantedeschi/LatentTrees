@@ -6,6 +6,8 @@ model:
   LR: 0.5
   ITER: 1e4
   REG: 0
+  LINEAR: True
+  SPLIT: elu
 
 dataset:
   DISTR: xor # or swissroll
