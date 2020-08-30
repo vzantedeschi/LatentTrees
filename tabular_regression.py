@@ -14,11 +14,11 @@ from src.optimization import train_stochastic, evaluate
 from src.tabular_datasets import Dataset
 from src.utils import make_directory, TorchDataset
 
-DATA_NAME = "YEAR"
-TREE_DEPTH = 3
-REG = 561.7353202746074
+DATA_NAME = "YAHOO"
+TREE_DEPTH = 8
+REG = 874.0853432906467
 MLP_LAYERS = 3
-DROPOUT = 0.07600075080048799
+DROPOUT = 0.06789081959243254
 LINEAR = False
 
 LR = 0.01
@@ -104,3 +104,5 @@ for SEED in [1225, 1337, 2020, 6021991]:
     test_losses.append(test_loss['test_MSE'] * std ** 2)
 
 print(np.mean(test_losses), np.std(test_losses))
+np.save(save_dir / '../test-losses.npy', test_losses)
+
