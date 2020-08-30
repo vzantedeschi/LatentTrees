@@ -26,6 +26,7 @@ sudo apt-get install python3-dev graphviz libgraphviz-dev pkg-config
 ```
 ### Setup
 ```bash
+pip3 install -r requirements.txt
 CXX=gcc python3 setup.py build_ext --inplace
 ```
 
@@ -36,6 +37,6 @@ python3 fit_toyset.py
 
 Default configuration is stored in 'config/default-xor.yaml'. You can edit directly the config file or change values from the command line, e.g. as follows: 
 ```bash
-python3 fit_toyset.py dataset.N=1000
+python3 fit_toyset.py dataset.N=1000 model.SPLIT=linear
 ```
 See [Hydra](https://hydra.cc/docs/intro/) for a tutorial.
