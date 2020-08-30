@@ -42,7 +42,8 @@ def objective(trial):
 
     TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 2, 8)
     REG = trial.suggest_uniform('REG', 0, 1e3)
-
+    
+    print(f'depth={TREE_DEPTH}, reg={REG}')
     pruning = REG > 0
 
     save_dir = root_dir / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
@@ -100,7 +101,7 @@ def objective(trial):
 
             trial.report(score, e)
             # Handle pruning based on the intermediate value.
-            if trial.should_prune() or np.isnan(val_loss):
+            if trial.should_prune() or np.isnan(val_loss['MSE']):
                 monitor.close()
                 raise optuna.TrialPruned()
 
