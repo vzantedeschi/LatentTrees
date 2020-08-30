@@ -2,6 +2,7 @@ import numpy as np
 import torch
 
 import itertools
+from scipy.stats import mode
 
 def LT_dendrogram_purity(X, Y, model, bst, nb_classes):
 
@@ -43,7 +44,7 @@ def dendrogram_purity(bst, pred_y, true_y, purity, nb_classes):
 
     return score / num_pairs
 
-def node_statistics(X, model):
+def node_statistics(X, Y, model):
 
     x = torch.from_numpy(X).float()
     
@@ -58,6 +59,13 @@ def node_statistics(X, model):
     for z_t in zs.T:
         stds.append(np.std(X[z_t > 0]))
 
+    # mean, std and mode of target values assigned to each node
+    y_stds, y_means, y_modes = [], [], []
+    for z_t in zs.T:
+        y_stds.append(np.std(Y[z_t > 0]))
+        y_means.append(np.mean(Y[z_t > 0]))
+        y_modes.append(mode(Y[z_t > 0])[0][0])
+
     # distance from decision boundaries of points assigned to each node
     split_dists = (XA / torch.norm(model.latent_tree.A[:, :-1], dim=1, p=2)).detach().numpy()
     all_dists = np.zeros(zs.shape)
@@ -69,7 +77,7 @@ def node_statistics(X, model):
         dist_medians.append(np.median(dist_t[z_t > 0]))
         dist_means.append(np.mean(dist_t[z_t > 0]))
 
-    return np.stack(dist_medians), np.stack(dist_means), np.stack(stds)
+    return np.stack(dist_medians), np.stack(dist_means), np.stack(stds), y_modes, y_means, y_stds
 
 
 if __name__ == "__main__":

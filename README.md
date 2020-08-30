@@ -12,17 +12,30 @@ sudo apt-get upgrade libstdc++6
 sudo apt-get dist-upgrade
 ```
 
-Setting up the cpp extensions requires at least **gcc-9**:
+Setting up the cpp extensions requires **gcc-9** or above:
 
 ```bash
 sudo apt install gcc-9
 sudo apt install g++-9
 ```
 
+Plotting with Networkx requires the following libraries:
+
 ```bash
 sudo apt-get install python3-dev graphviz libgraphviz-dev pkg-config
 ```
 ### Setup
-```python
+```bash
 CXX=gcc python3 setup.py build_ext --inplace
 ```
+
+### Train on toy datasets
+```bash
+python3 fit_toyset.py
+```
+
+Default configuration is stored in 'config/default-xor.yaml'. You can edit directly the config file or change values from the command line, e.g. as follows: 
+```bash
+python3 fit_toyset.py dataset.N=1000
+```
+See [Hydra](https://hydra.cc/docs/intro/) for a tutorial.

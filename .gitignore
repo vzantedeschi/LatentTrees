@@ -1,5 +1,10 @@
-src/__pycache__/
-__pycache__/
+**/__pycache__/
 results/
-runs/
-src/*.pyc
+runs*/
+outputs/
+**/*.pyc
+**/*.zip
+**/*.json
+.eggs/
+build/
+DATA/
