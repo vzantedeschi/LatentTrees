@@ -119,7 +119,6 @@ class LatentTree(torch.nn.Module):
 
         # compute tree paths q
         XA = self.split(x)
-
         q = torch.ones((len(x), self.bst.nb_nodes))
 
         # upper bound children's q to parent's q        

@@ -24,16 +24,23 @@ LR = 0.2
 BATCH_SIZE = 128 
 EPOCHS = 100
 
-out_features = [3, 4]
-in_features = list(set(range(54)) - set(out_features))
-
-root_dir = Path("./results/optuna/clustering-selfsup/") / "{}/in-feats={}/".format(DATA_NAME, in_features)
 data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
 classes = np.unique(data.y_train)
 num_classes = max(classes) + 1
 
-data.X_train_in, data.X_valid_in, data.X_test_in = data.X_train[:, in_features], data.X_valid[:, in_features], data.X_test[:, in_features]
-data.X_train_out, data.X_valid_out, data.X_test_out = data.X_train[:, out_features], data.X_valid[:, out_features], data.X_test[:, out_features]
+# selecting input and output features for self-supervised training
+if DATA_NAME == "ALOI":
+    in_features = [0, 2] # R and B
+    out_features = [1] # G
+
+elif DATA_NAME == "COVTYPE":
+    out_features = [3, 4]
+    in_features = list(set(range(54)) - set(out_features))
+
+root_dir = Path("./results/optuna/clustering-selfsup/") / "{}/in-feats={}/".format(DATA_NAME, in_features)
+
+data.X_train_in, data.X_valid_in = data.X_train[..., in_features], data.X_valid[..., in_features]
+data.X_train_out, data.X_valid_out = data.X_train[..., out_features], data.X_valid[..., out_features]
 
 trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out), batch_size=BATCH_SIZE, shuffle=True)
 valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out), batch_size=BATCH_SIZE*2, shuffle=False)
@@ -49,7 +56,7 @@ def objective(trial):
     save_dir = root_dir / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
     make_directory(save_dir)
 
-    model = LTRegressor(TREE_DEPTH, len(in_features), len(out_features), pruned=pruning)
+    model = LTRegressor(TREE_DEPTH, data.X_train_in.size // len(data.X_train_in), data.X_train_out.size // len(data.X_train_out), pruned=pruning)
 
     # init optimizer
     optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.998))
@@ -68,10 +75,6 @@ def objective(trial):
         'loss-function': 'MSE',
         'learning-rate': LR,
         'seed': SEED,
-        'bst_depth': TREE_DEPTH,
-        'in_size': len(in_features),
-        'out_size': len(out_features),
-        'pruned': pruning,
         'dataset': DATA_NAME,
         'reg': REG,
         'linear': True,

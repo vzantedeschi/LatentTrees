@@ -57,6 +57,10 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
 
         t_x, t_y = batch
 
+        if t_x.dim() > 2: # supports only flatten instances atm
+            t_x = t_x.view(len(t_x), -1)
+            t_y = t_y.view(len(t_y), -1)
+
         y_pred = model(t_x).squeeze()
 
         loss = criterion(y_pred, t_y.float()) / len(t_x)
