@@ -40,7 +40,7 @@ valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out), batch_si
 
 def objective(trial):
 
-    TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 2, 8)
+    TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 2, 6)
     REG = trial.suggest_uniform('REG', 0, 1e3)
     
     print(f'depth={TREE_DEPTH}, reg={REG}')
@@ -77,37 +77,36 @@ def objective(trial):
         'linear': True,
     }
 
-    best_val_score = 0
+    best_val_loss = float('inf')
     best_e = -1
     for e in range(EPOCHS):
         train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
         
-        if e % 10 == 0 or e == EPOCHS - 1:
-            val_loss = evaluate(valloader, model, {'MSE': criterion}, epoch=e, monitor=monitor)
-            score, _ = LT_dendrogram_purity(data.X_valid_in, data.y_valid, model, model.latent_tree.bst, num_classes)
+        val_loss = evaluate(valloader, model, {'MSE': criterion}, epoch=e, monitor=monitor)
+        
+        if val_loss['MSE'] <= best_val_loss:
+            best_val_loss = val_loss['MSE']
+            best_e = e
+            LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_mse=val_loss['MSE'])
 
-            print("Epoch %i: validation mse = %f; validation purity = %f\n" % (e, val_loss['MSE'], score))
+        # reduce learning rate if needed
+        lr_scheduler.step(val_loss['MSE'])
+        monitor.write(model, e, train={"lr": optimizer.param_groups[0]['lr']})
 
-            monitor.write(model, e, val={"Dendrogram Purity": score})
+        if np.isnan(val_loss['MSE']):
+            monitor.close()
+            raise optuna.TrialPruned()
+    
+    model = LTRegressor.load_model(save_dir)
+    score, _ = LT_dendrogram_purity(data.X_valid_in, data.y_valid, model, model.latent_tree.bst, num_classes)
 
-            if score >= best_val_score:
-                best_val_score = score
-                best_e = e
-                LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_mse=val_loss['MSE'], val_dp=score)
+    print(f"Best model: validation mse = {best_val_loss}; validation purity = {score}\n")
 
-            # reduce learning rate if needed
-            lr_scheduler.step(val_loss['MSE'])
-            monitor.write(model, e, train={"lr": optimizer.param_groups[0]['lr']})
-
-            trial.report(score, e)
-            # Handle pruning based on the intermediate value.
-            if trial.should_prune() or np.isnan(val_loss['MSE']):
-                monitor.close()
-                raise optuna.TrialPruned()
+    monitor.write(model, e, val={"Dendrogram Purity": score})
 
     monitor.close()         
 
-    return best_val_score
+    return score
 
 if __name__ == "__main__":
 
