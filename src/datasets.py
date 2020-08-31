@@ -4,6 +4,7 @@ from pathlib import Path
 
 import gzip
 import shutil
+import tarfile
 
 from sklearn.datasets import make_swiss_roll
 from sklearn.model_selection import train_test_split
@@ -92,6 +93,51 @@ def fetch_COVTYPE(path, valid_size=0.2, test_size=0.2, rnd_state=1):
     data = np.genfromtxt(data_path, delimiter=',')
     
     X, Y = (data[:, :-1]).astype(np.float32), (data[:, -1] - 1).astype(int)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=rnd_state)
+
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=rnd_state)
+
+    return dict(
+        X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
+    )
+
+def fetch_ALOI(path, valid_size=0.2, test_size=0.2, rnd_state=1):
+
+    from PIL import Image
+    from tqdm import tqdm
+
+    path = Path(path)
+    data_path = path / f'aloi_red4'
+
+    if not data_path.exists():
+
+        path.mkdir(parents=True, exist_ok=True)
+
+        for data_type in ["ill", "col", "view", "stereo"]:
+            
+            archive_path = path / f'aloi_red4_{data_type}.tar'
+
+            download(f'http://aloi.science.uva.nl/tars/aloi_red4_{data_type}.tar', archive_path)
+
+            with tarfile.open(archive_path, 'r') as f_in:
+
+                f_in.extractall(path=data_path)
+
+    X, Y = [], []
+    # loop over classes
+    for c in tqdm(range(1000), desc='Converting ALOI png to npy'):
+
+        c_path = data_path / "png4" / str(c + 1) 
+
+        # loop over class instances
+        for i_path in c_path.glob('*.png'):
+
+            im_frame = Image.open(i_path)
+            X.append(np.array(im_frame))
+            Y.append(c)
+    
+    X, Y = np.stack(X).astype(np.float32), np.hstack(Y)
 
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=rnd_state)
 

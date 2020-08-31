@@ -20,7 +20,7 @@ from sklearn.preprocessing import QuantileTransformer
 
 from category_encoders import LeaveOneOutEncoder
 
-from src.datasets import fetch_GLASS, fetch_COVTYPE
+from src.datasets import fetch_GLASS, fetch_COVTYPE, fetch_ALOI
 from src.utils import download
 
 class Dataset:
@@ -458,4 +458,5 @@ DATASETS = {
     'CLICK': fetch_CLICK,
     'GLASS': fetch_GLASS,
     'COVTYPE': fetch_COVTYPE,
+    'ALOI': fetch_ALOI,
 }
