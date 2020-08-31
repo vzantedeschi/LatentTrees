@@ -124,7 +124,7 @@ def fetch_ALOI(path, valid_size=0.2, test_size=0.2, rnd_state=1):
 
                 f_in.extractall(path=data_path)
 
-    X, Y = [], []
+    X, Y = np.empty((0, 144, 192, 3)), np.empty((0)) 
     # loop over classes
     for c in tqdm(range(1000), desc='Converting ALOI png to npy'):
 
@@ -134,10 +134,10 @@ def fetch_ALOI(path, valid_size=0.2, test_size=0.2, rnd_state=1):
         for i_path in c_path.glob('*.png'):
 
             im_frame = Image.open(i_path)
-            X.append(np.array(im_frame))
-            Y.append(c)
+            X = np.append(X, np.array(im_frame)[None, :], axis=0)
+            Y = np.append(Y, [c], axis=0)
         
-    X, Y = np.transpose(np.stack(X).astype(np.float32), (0, 3, 1, 2)), np.hstack(Y)
+    X = np.transpose(X.astype(np.float32), (0, 3, 1, 2))
 
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=rnd_state)
 
