@@ -22,7 +22,7 @@ from src.optimization import train_batch
 @hydra.main(config_path='config/default-xor.yaml')
 def main(cfg):
 
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.DISTR}/{cfg.model.TYPE}/depth={cfg.model.BST_DEPTH}/seed={cfg.SEED}/"
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.DISTR}/{cfg.model.TYPE}/split={cfg.model.SPLIT}/depth={cfg.model.BST_DEPTH}/seed={cfg.SEED}/"
     SAVE_DIR = Path(SAVE_DIR)
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -41,7 +41,7 @@ def main(cfg):
         pruning = cfg.model.REG > 0
 
         # model = LTBinaryClassifier.load_model(SAVE_DIR) # to load a pretrained model instead
-        model = LTBinaryClassifier(cfg.model.BST_DEPTH, 2, pruned=pruning)
+        model = LTBinaryClassifier(cfg.model.BST_DEPTH, 2, pruned=pruning, linear=cfg.model.LINEAR, split_func=cfg.model.SPLIT)
 
         # init optimizer
         optimizer = torch.optim.SGD(model.parameters(), lr=cfg.model.LR)
