@@ -88,6 +88,21 @@ class LatentTree(torch.nn.Module):
                     torch.nn.Linear(dim, self.bst.nb_split),
                     torch.nn.ELU()
                 )
+        elif split_func == 'conv':
+            self.split = torch.nn.Sequential(
+                    torch.nn.Conv2d(dim, 16, 3, stride=2),
+                    torch.nn.Conv2d(16, 32, 3, stride=2),
+                    torch.nn.ELU(),
+                    torch.nn.Conv2d(32, 16, 3, stride=2),
+                    torch.nn.Conv2d(16, 8, 3, stride=2),
+                    torch.nn.ELU(),
+                    torch.nn.Conv2d(8, self.bst.nb_split, 4, stride=4),
+                    torch.nn.MaxPool2d((2, 4)),
+                    torch.nn.Flatten(),
+                )
+
+        else:
+            raise NotImplementedError
         
         self.pruned = pruned
         
