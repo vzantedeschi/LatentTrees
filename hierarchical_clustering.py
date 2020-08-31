@@ -43,8 +43,8 @@ save_dir = Path("./results/clustering-selfsup/") / DATA_NAME / "out-feats={}/dep
 
 save_dir.mkdir(parents=True, exist_ok=True)
 
-data.X_train_in, data.X_valid_in, data.X_test_in = data.X_train[..., in_features], data.X_valid[..., in_features], data.X_test[..., in_features]
-data.X_train_out, data.X_valid_out, data.X_test_out = data.X_train[..., out_features], data.X_valid[..., out_features], data.X_test[..., out_features]
+data.X_train_in, data.X_valid_in, data.X_test_in = data.X_train[:, in_features], data.X_valid[:, in_features], data.X_test[:, in_features]
+data.X_train_out, data.X_valid_out, data.X_test_out = data.X_train[:, out_features], data.X_valid[:, out_features], data.X_test[:, out_features]
 
 trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out), batch_size=BATCH_SIZE, shuffle=True)
 valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out), batch_size=BATCH_SIZE*2, shuffle=False)
@@ -74,32 +74,33 @@ state = {
     'linear': True,
 }
 
-best_val_score = 0
+best_val_loss = float('inf')
 best_e = -1
 for e in range(EPOCHS):
     train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
 
     val_loss = evaluate(valloader, model, {'MSE': criterion}, epoch=e, monitor=monitor)
-    score, _ = LT_dendrogram_purity(data.X_valid_in, data.y_valid, model, model.latent_tree.bst, num_classes)
 
-    print("Epoch %i: validation mse = %f; validation purity = %f\n" % (e, val_loss['MSE'], score))
+    print("Epoch %i: validation mse = %f\n" % (e, val_loss['MSE']))
 
     monitor.write(model, e, val={"Dendrogram Purity": score})
 
-    if score >= best_val_score:
-        best_val_score = score
+    if val_loss['MSE'] <= best_val_loss:
+        best_val_loss = val_loss['MSE']
         best_e = e
-        LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_mse=val_loss['MSE'], val_dp=score)
+        LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_mse=val_loss['MSE'])
 
     # reduce learning rate if needed
     lr_scheduler.step(val_loss['MSE'])
     monitor.write(model, e, train={"lr": optimizer.param_groups[0]['lr']})
 
 monitor.close()
-print("best validation purity (epoch {}): {}\n".format(best_e, best_val_score))
 
 model = LTRegressor.load_model(save_dir)
-test_loss = evaluate(testloader, model, {'MSE': criterion})
+
+score, _ = LT_dendrogram_purity(data.X_valid_in, data.y_valid, model, model.latent_tree.bst, num_classes)
+
+print("Epoch %i: validation purity = {}\n".format(best_e, score))
 
 score, _ = LT_dendrogram_purity(data.X_test_in, data.y_test, model, model.latent_tree.bst, num_classes)
 print("Epoch %i: test mse = %f; test purity = %f\n" % (best_e, test_loss['MSE'], score))

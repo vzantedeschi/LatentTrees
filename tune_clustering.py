@@ -39,8 +39,8 @@ elif DATA_NAME == "COVTYPE":
 
 root_dir = Path("./results/optuna/clustering-selfsup/") / "{}/in-feats={}/".format(DATA_NAME, in_features)
 
-data.X_train_in, data.X_valid_in = data.X_train[..., in_features], data.X_valid[..., in_features]
-data.X_train_out, data.X_valid_out = data.X_train[..., out_features], data.X_valid[..., out_features]
+data.X_train_in, data.X_valid_in = data.X_train[:, in_features], data.X_valid[:, in_features]
+data.X_train_out, data.X_valid_out = data.X_train[:, out_features], data.X_valid[:, out_features]
 
 trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out), batch_size=BATCH_SIZE, shuffle=True)
 valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out), batch_size=BATCH_SIZE*2, shuffle=False)
