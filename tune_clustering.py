@@ -19,10 +19,11 @@ from src.tabular_datasets import Dataset
 from src.utils import make_directory, TorchDataset
 
 SEED = 1337
-DATA_NAME = "COVTYPE"
+DATA_NAME = "ALOI"
 LR = 0.2
 BATCH_SIZE = 128 
 EPOCHS = 100
+SPLIT_FUNC = 'linear' # or 'conv'
 
 data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
 classes = np.unique(data.y_train)
@@ -37,7 +38,7 @@ elif DATA_NAME == "COVTYPE":
     out_features = [3, 4]
     in_features = list(set(range(54)) - set(out_features))
 
-root_dir = Path("./results/optuna/clustering-selfsup/") / "{}/in-feats={}/".format(DATA_NAME, in_features)
+root_dir = Path("./results/optuna/clustering-selfsup/") / "{}/out-feats={}/split={}".format(DATA_NAME, out_features, SPLIT_FUNC)
 
 data.X_train_in, data.X_valid_in = data.X_train[:, in_features], data.X_valid[:, in_features]
 data.X_train_out, data.X_valid_out = data.X_train[:, out_features], data.X_valid[:, out_features]
@@ -56,7 +57,7 @@ def objective(trial):
     save_dir = root_dir / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
     make_directory(save_dir)
 
-    model = LTRegressor(TREE_DEPTH, data.X_train_in.size // len(data.X_train_in), data.X_train_out.size // len(data.X_train_out), pruned=pruning)
+    model = LTRegressor(TREE_DEPTH, data.X_train_in.shape[1:], data.X_train_out.shape[1:], pruned=pruning, split_func=SPLIT_FUNC)
 
     # init optimizer
     optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.998))
@@ -113,8 +114,7 @@ def objective(trial):
 
 if __name__ == "__main__":
 
-    # Set up the median stopping rule as the pruning condition.
-    study = optuna.create_study(study_name=DATA_NAME, pruner=optuna.pruners.MedianPruner(), direction="maximize")
+    study = optuna.create_study(study_name=DATA_NAME, direction="maximize")
     study.optimize(objective, n_trials=100)
 
     print(study.best_params, study.best_value)
