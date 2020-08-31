@@ -50,7 +50,7 @@ trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out), batch_
 valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out), batch_size=BATCH_SIZE*2, shuffle=False)
 testloader = DataLoader(TorchDataset(data.X_test_in, data.X_test_out), batch_size=BATCH_SIZE*2, shuffle=False)
 
-model = LTRegressor(TREE_DEPTH, data.X_train_in.size // len(data.X_train_in), data.X_train_out.size // len(data.X_train_out), pruned=pruning)
+model = LTRegressor(TREE_DEPTH, data.X_train_in.shape[1:], data.X_train_out.shape[1:], pruned=pruning, split_func='conv')
 
 # init optimizer
 optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.998))

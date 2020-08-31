@@ -76,28 +76,40 @@ class LatentTree(torch.nn.Module):
 
         super(LatentTree, self).__init__()
 
-        self.in_size = dim
         self.bst = BinarySearchTree(bst_depth)      
 
         self.split_func = split_func
         if split_func == 'linear':
-            self.split = torch.nn.Linear(dim, self.bst.nb_split)
+            
+            self.in_size = np.prod(dim)
+
+            self.split = torch.nn.Sequential(
+                    torch.nn.Flatten(),
+                    torch.nn.Linear(self.in_size, self.bst.nb_split)
+                )
 
         elif split_func == 'elu':
+
+            self.in_size = np.prod(dim)
+
             self.split = torch.nn.Sequential(
-                    torch.nn.Linear(dim, self.bst.nb_split),
+                    torch.nn.Flatten(),
+                    torch.nn.Linear(self.in_size, self.bst.nb_split),
                     torch.nn.ELU()
                 )
         elif split_func == 'conv':
+            
+            self.in_size = dim[0]
+
             self.split = torch.nn.Sequential(
-                    torch.nn.Conv2d(dim, 16, 3, stride=2),
+                    torch.nn.Conv2d(self.in_size, 16, 3, stride=2),
                     torch.nn.Conv2d(16, 32, 3, stride=2),
                     torch.nn.ELU(),
                     torch.nn.Conv2d(32, 16, 3, stride=2),
                     torch.nn.Conv2d(16, 8, 3, stride=2),
                     torch.nn.ELU(),
                     torch.nn.Conv2d(8, self.bst.nb_split, 4, stride=4),
-                    torch.nn.MaxPool2d((2, 4)),
+                    torch.nn.MaxPool2d(2),
                     torch.nn.Flatten(),
                 )
 
@@ -155,6 +167,14 @@ class LTModel(torch.nn.Module):
 
         torch.nn.Module.__init__(self)
 
+    def set_latent_tree(self, bst_depth, in_size, pruned, **kwargs):
+
+        # init latent tree optimizer (x -> z)
+        if 'split_func' in kwargs:
+            self.latent_tree = LatentTree(bst_depth, in_size, pruned, split_func=kwargs['split_func'])
+        else:
+            self.latent_tree = LatentTree(bst_depth, in_size, pruned)
+
     def train(self):
         self.latent_tree.train()
         self.predictor.train()
@@ -170,7 +190,7 @@ class LTModel(torch.nn.Module):
 
         z = self.latent_tree(X)
 
-        xz = torch.cat((X, z), 1)
+        xz = torch.cat((X.view(len(X), -1), z), 1)
 
         return self.predictor(xz)
 
@@ -225,14 +245,10 @@ class LTBinaryClassifier(LTModel):
         self.params = locals()
         del self.params['self']
 
-        # init latent tree optimizer (x -> z)
-        if 'split_func' in kwargs:
-            self.latent_tree = LatentTree(bst_depth, in_size, pruned, split_func=kwargs['split_func'])
-        else:
-            self.latent_tree = LatentTree(bst_depth, in_size, pruned)
+        self.set_latent_tree(bst_depth, in_size, pruned, **kwargs)
 
         # init predictor ( [x;z]-> y )
-        self.predictor = LogisticRegression(in_size + self.latent_tree.bst.nb_nodes, 1, linear, **kwargs)
+        self.predictor = LogisticRegression(np.prod(in_size) + self.latent_tree.bst.nb_nodes, 1, linear, **kwargs)
 
     def predict(self, X):
 
@@ -251,17 +267,13 @@ class LTClassifier(LTModel):
         self.params = locals()
         del self.params['self']
 
-        # init latent tree optimizer (x -> z)
-        if 'split_func' in kwargs:
-            self.latent_tree = LatentTree(bst_depth, in_size, pruned, split_func=kwargs['split_func'])
-        else:
-            self.latent_tree = LatentTree(bst_depth, in_size, pruned)
+        self.set_latent_tree(bst_depth, in_size, pruned, **kwargs)
 
         # init predictor ( [x;z]-> y )
         if linear:
-            self.predictor = Linear(in_size + self.latent_tree.bst.nb_nodes, num_classes)
+            self.predictor = Linear(np.prod(in_size) + self.latent_tree.bst.nb_nodes, num_classes)
         else:
-            self.predictor = MLP(in_size + self.latent_tree.bst.nb_nodes, num_classes, **kwargs)
+            self.predictor = MLP(np.prod(in_size) + self.latent_tree.bst.nb_nodes, num_classes, **kwargs)
 
     def predict(self, X):
 
@@ -279,17 +291,14 @@ class LTRegressor(LTModel):
         self.params = locals()
         del self.params['self']
 
-        # init latent tree optimizer (x -> z)
-        if 'split_func' in kwargs:
-            self.latent_tree = LatentTree(bst_depth, in_size, pruned, split_func=kwargs['split_func'])
-        else:
-            self.latent_tree = LatentTree(bst_depth, in_size, pruned)
+        self.set_latent_tree(bst_depth, in_size, pruned, **kwargs)
 
         # init predictor ( [x;z]-> y )
+
         if linear:
-            self.predictor = Linear(in_size + self.latent_tree.bst.nb_nodes, out_size)
+            self.predictor = Linear(np.prod(in_size) + self.latent_tree.bst.nb_nodes, np.prod(out_size))
         else:
-            self.predictor = MLP(in_size + self.latent_tree.bst.nb_nodes, out_size, **kwargs)
+            self.predictor = MLP(np.prod(in_size) + self.latent_tree.bst.nb_nodes, np.prod(out_size), **kwargs)
 
     def predict(self, X):
 

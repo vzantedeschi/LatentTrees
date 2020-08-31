@@ -136,7 +136,7 @@ def fetch_ALOI(path, valid_size=0.2, test_size=0.2, rnd_state=1):
             im_frame = Image.open(i_path)
             X.append(np.array(im_frame))
             Y.append(c)
-
+        
     X, Y = np.transpose(np.stack(X).astype(np.float32), (0, 3, 1, 2)), np.hstack(Y)
 
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=rnd_state)
