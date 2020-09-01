@@ -21,7 +21,7 @@ from src.utils import make_directory, TorchDataset
 
 SEED = 1337
 DATA_NAME = "COVTYPE"
-LR = 0.2
+LR = 0.1
 EPOCHS = 50
 SPLIT_FUNC = 'linear' # or 'conv'
 

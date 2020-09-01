@@ -18,7 +18,7 @@ from src.utils import TorchDataset
 
 SEED = 1225
 DATA_NAME = "CLICK"
-LR = 0.01
+LR = 0.1
 BATCH_SIZE = 512 
 EPOCHS = 50
 LINEAR = True
