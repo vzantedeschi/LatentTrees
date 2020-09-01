@@ -97,6 +97,10 @@ def evaluate(dataloader, model, criteria, epoch=None, monitor=None):
     for batch in dataloader:
 
         t_x, t_y = batch
+        
+        if t_y.dim() > 2: # predictors support only flatten output atm
+            t_y = t_y.view(len(t_y), -1)
+        
         num_points += len(t_x)
 
         y_pred = model.predict(t_x).squeeze()

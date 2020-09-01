@@ -20,7 +20,7 @@ SEED = 1225
 DATA_NAME = "CLICK"
 LR = 0.01
 BATCH_SIZE = 512 
-EPOCHS = 100
+EPOCHS = 50
 LINEAR = True
 
 data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
@@ -36,11 +36,13 @@ def objective(trial):
 
     TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 2, 8)
     REG = trial.suggest_uniform('REG', 0, 1e3)
+    print(f'TREE_DEPTH={TREE_DEPTH}, REG={REG}')
 
     if not LINEAR:
         MLP_LAYERS = trial.suggest_int('MLP_LAYERS', 2, 7)
         DROPOUT = trial.suggest_uniform('DROPOUT', 0.0, 0.5)
-
+        print(f'MLP_LAYERS={MLP_LAYERS}, DROPOUT={DROPOUT}')
+    
     pruning = REG > 0
 
     if LINEAR:

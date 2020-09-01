@@ -22,7 +22,7 @@ SEED = 1337
 DATA_NAME = "ALOI"
 LR = 0.2
 BATCH_SIZE = 128 
-EPOCHS = 100
+EPOCHS = 50
 SPLIT_FUNC = 'linear' # or 'conv'
 
 data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
@@ -115,7 +115,7 @@ def objective(trial):
 if __name__ == "__main__":
 
     study = optuna.create_study(study_name=DATA_NAME, direction="maximize")
-    study.optimize(objective, n_trials=100)
+    study.optimize(objective, n_trials=20)
 
     print(study.best_params, study.best_value)
     df = study.trials_dataframe(attrs=('number', 'value', 'params', 'state'))
