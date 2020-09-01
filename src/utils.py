@@ -57,11 +57,20 @@ def iterate_minibatches(*tensors, batch_size, shuffle=True, epochs=1, allow_inco
 
 class TorchDataset(torch.utils.data.Dataset):
 
-    def __init__(self, X, Y):
+    def __init__(self, X, Y, means=None, stds=None):
         
         self.x = X
         self.y = Y
+
         print(X.shape, Y.shape)
+        
+        if means is not None:
+            assert stds is not None, "must specify both <means> and <stds>"
+
+            self.normalize = lambda x, y: ((x - means[0]) / stds[0], (y - means[1]) / stds[1])
+
+        else:
+            self.normalize = lambda x, y: (x, y)
 
     def __len__(self):
 
@@ -69,4 +78,4 @@ class TorchDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
 
-        return self.x[idx], self.y[idx]
+        return self.normalize(self.x[idx], self.y[idx])

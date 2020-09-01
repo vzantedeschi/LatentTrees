@@ -43,8 +43,8 @@ root_dir = Path("./results/optuna/clustering-selfsup/") / "{}/out-feats={}/split
 data.X_train_in, data.X_valid_in = data.X_train[:, in_features], data.X_valid[:, in_features]
 data.X_train_out, data.X_valid_out = data.X_train[:, out_features], data.X_valid[:, out_features]
 
-trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out), batch_size=BATCH_SIZE, shuffle=True)
-valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out), batch_size=BATCH_SIZE*2, shuffle=False)
+trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE, shuffle=True)
+valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE*2, shuffle=False)
 
 def objective(trial):
 

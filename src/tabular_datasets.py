@@ -25,8 +25,7 @@ from src.utils import download
 
 class Dataset:
 
-    def __init__(self, dataset, random_state, data_path='./DATA', normalize=False,
-                 quantile_transform=False, output_distribution='normal', quantile_noise=0, **kwargs):
+    def __init__(self, dataset, random_state, data_path='./DATA', normalize=False, **kwargs):
         """
         Dataset is a dataclass that contains all training and evaluation data required for an experiment
         :param dataset: a pre-defined dataset name (see DATSETS) or a custom dataset
@@ -34,13 +33,6 @@ class Dataset:
         :param random_state: global random seed for an experiment
         :param data_path: a shared data folder path where the dataset is stored (or will be downloaded into)
         :param normalize: standardize features by removing the mean and scaling to unit variance
-        :param quantile_transform: transforms the features to follow a normal distribution.
-        :param output_distribution: if quantile_transform == True, data is projected onto this distribution
-            See the same param of sklearn QuantileTransformer
-        :param quantile_noise: if specified, fits QuantileTransformer on data with added gaussian noise
-            with std = :quantile_noise: * data.std ; this will cause discrete values to be more separable
-            Please not that this transformation does NOT apply gaussian noise to the resulting data,
-            the noise is only applied for QuantileTransformer
         :param kwargs: depending on the dataset, you may select train size, test size or other params
             If dataset is not in DATASETS, provide six keys: X_train, y_train, X_valid, y_valid, X_test and y_test
         """
@@ -71,28 +63,18 @@ class Dataset:
             self.query_test = data_dict['query_test']
 
         if normalize:
-            mean = np.mean(self.X_train, axis=0)
-            std = np.std(self.X_train, axis=0)
+            print("Normalize dataset")
+            self.mean = np.mean(self.X_train, axis=0, dtype=np.float32)
+            self.std = np.std(self.X_train, axis=0, dtype=np.float32)
 
             # if constants, set std to 1
-            std[std == 0.] = 1.
-            
-            self.X_train = (self.X_train - mean) / std
-            self.X_valid = (self.X_valid - mean) / std
-            self.X_test = (self.X_test - mean) / std
+            self.std[self.std == 0.] = 1.
 
-        if quantile_transform:
-            quantile_train = np.copy(self.X_train)
-            if quantile_noise:
-                stds = np.std(quantile_train, axis=0, keepdims=True)
-                noise_std = quantile_noise / np.maximum(stds, quantile_noise)
-                quantile_train += noise_std * np.random.randn(*quantile_train.shape)
-
-            qt = QuantileTransformer(random_state=random_state, output_distribution=output_distribution).fit(quantile_train)
-            self.X_train = qt.transform(self.X_train)
-            self.X_valid = qt.transform(self.X_valid)
-            self.X_test = qt.transform(self.X_test)
-
+            if dataset != 'ALOI':
+                self.X_train = (self.X_train - mean) / std
+                self.X_valid = (self.X_valid - mean) / std
+                self.X_test = (self.X_test - mean) / std
+             
     def to_csv(self, path=None):
         if path == None:
             path = os.path.join(self.data_path, self.dataset)

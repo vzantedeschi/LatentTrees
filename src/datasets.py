@@ -108,7 +108,8 @@ def fetch_ALOI(path, valid_size=0.2, test_size=0.2, rnd_state=1):
     from tqdm import tqdm
 
     path = Path(path)
-    data_path = path / f'aloi_red4'
+    data_path = path / 'aloi_red4'
+    npz_path = path / 'aloi_red4.npz'
 
     if not data_path.exists():
 
@@ -124,23 +125,34 @@ def fetch_ALOI(path, valid_size=0.2, test_size=0.2, rnd_state=1):
 
                 f_in.extractall(path=data_path)
 
-    X, Y = np.empty((0, 144, 192, 3)), np.empty((0)) 
-    # loop over classes
-    for c in tqdm(range(1000), desc='Converting ALOI png to npy'):
-
-        c_path = data_path / "png4" / str(c + 1) 
-
-        # loop over class instances
-        for i_path in c_path.glob('*.png'):
-
-            im_frame = Image.open(i_path)
-            X = np.append(X, np.array(im_frame)[None, :], axis=0)
-            Y = np.append(Y, [c], axis=0)
+    if not npz_path.exists():
         
-    X = np.transpose(X.astype(np.float32), (0, 3, 1, 2))
+        X = np.empty((110250, 3, 144, 192), dtype=np.uint8)
+        Y = np.empty(110250, dtype=np.uint16)
+
+        # loop over classes
+        i = 0
+        for c in tqdm(range(1000), desc='Converting ALOI png to npy'):
+
+            c_path = data_path / "png4" / str(c + 1) 
+
+            # loop over class instances
+            for i_path in c_path.glob('*.png'):
+                
+                im_frame = Image.open(i_path)
+                X[i] = np.transpose(np.array(im_frame), (2, 0, 1))
+                Y[i] = c
+                i += 1
+
+        np.savez_compressed(npz_path, X=X, Y=Y)
+    
+    else:
+
+        data = np.load(npz_path)
+        X, Y = data['X'], data['Y']
 
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=rnd_state)
-
+    
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=rnd_state)
 
     return dict(
