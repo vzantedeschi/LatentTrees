@@ -57,11 +57,11 @@ def iterate_minibatches(*tensors, batch_size, shuffle=True, epochs=1, allow_inco
 
 class TorchDataset(torch.utils.data.Dataset):
 
-    def __init__(self, X, Y, means=None, stds=None):
+    def __init__(self, X, Y, means=None, stds=None, device=None):
         
         self.x = X
         self.y = Y
-
+        self.device = None
         print(X.shape, Y.shape)
         
         if means is not None:
@@ -78,4 +78,10 @@ class TorchDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
 
-        return self.normalize(self.x[idx], self.y[idx])
+        x, y = self.normalize(self.x[idx], self.y[idx])
+
+        if self.device:
+            return torch.from_numpy(x).to(self.device), torch.from_numpy(y).to(self.device)
+
+        else:
+            return x, y

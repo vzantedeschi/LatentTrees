@@ -3,6 +3,7 @@ import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 
+import torch
 from torch.nn import MSELoss
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
@@ -25,6 +26,16 @@ BATCH_SIZE = 128
 EPOCHS = 50
 SPLIT_FUNC = 'linear' # or 'conv'
 
+if torch.cuda.is_available():
+    pin_memory = True
+    device = torch.device("cuda:0")
+
+else:
+    pin_memory = False
+    device = torch.device("cpu")
+
+print("Training on", device)
+
 data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
 classes = np.unique(data.y_train)
 num_classes = max(classes) + 1
@@ -43,8 +54,8 @@ root_dir = Path("./results/optuna/clustering-selfsup/") / "{}/out-feats={}/split
 data.X_train_in, data.X_valid_in = data.X_train[:, in_features], data.X_valid[:, in_features]
 data.X_train_out, data.X_valid_out = data.X_train[:, out_features], data.X_valid[:, out_features]
 
-trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE, shuffle=True)
-valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE*2, shuffle=False)
+trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features]), device=device), batch_size=BATCH_SIZE, shuffle=True, pin_memory=pin_memory)
+valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features]), device=device), batch_size=BATCH_SIZE*2, shuffle=False, pin_memory=pin_memory)
 
 def objective(trial):
 
@@ -58,6 +69,7 @@ def objective(trial):
     make_directory(save_dir)
 
     model = LTRegressor(TREE_DEPTH, data.X_train_in.shape[1:], data.X_train_out.shape[1:], pruned=pruning, split_func=SPLIT_FUNC)
+    model.to(device)
 
     # init optimizer
     optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.998))
