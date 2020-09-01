@@ -14,12 +14,12 @@ from src.optimization import train_stochastic, evaluate
 from src.tabular_datasets import Dataset
 from src.utils import make_directory, TorchDataset
 
-DATA_NAME = "YAHOO"
-TREE_DEPTH = 8
-REG = 874.0853432906467
-MLP_LAYERS = 3
-DROPOUT = 0.06789081959243254
+DATA_NAME = "MICROSOFT"
 LINEAR = False
+TREE_DEPTH=8 
+REG=784.2480977010307
+MLP_LAYERS=3
+DROPOUT=0.10054922066470592 
 
 LR = 0.01
 BATCH_SIZE = 512 
@@ -63,19 +63,10 @@ for SEED in [1225, 1337, 2020, 6021991]:
 
     state = {
         'batch-size': BATCH_SIZE,
-        'regression': 'linear',
         'loss-function': 'MSE',
         'learning-rate': LR,
         'seed': SEED,
-        'bst_depth': TREE_DEPTH,
-        'in_size': in_features,
-        'out_size': out_features,
         'dataset': DATA_NAME,
-        'reg': REG,
-        'pruned': pruning,
-        'linear': LINEAR,
-        'layers': MLP_LAYERS,
-        'dropout': DROPOUT,
     }
 
     best_val_loss = float("inf")
