@@ -2,7 +2,6 @@ import numpy as np
 
 from pathlib import Path
 
-import h5py
 import gzip
 import shutil
 import tarfile
@@ -110,7 +109,7 @@ def fetch_ALOI(path, valid_size=0.2, test_size=0.2, rnd_state=1):
 
     path = Path(path)
     data_path = path / 'aloi_red4'
-    hdf_path = path / f'aloi_red4-rnd={rnd_state}.hdf5'
+    npz_path = path / 'aloi_red4.npz'
 
     if not data_path.exists():
 
@@ -126,7 +125,7 @@ def fetch_ALOI(path, valid_size=0.2, test_size=0.2, rnd_state=1):
 
                 f_in.extractall(path=data_path)
 
-    if not hdf_path.exists():
+    if not npz_path.exists():
         
         X = np.empty((110250, 3, 144, 192), dtype=np.uint8)
         Y = np.empty(110250, dtype=np.uint16)
@@ -145,23 +144,15 @@ def fetch_ALOI(path, valid_size=0.2, test_size=0.2, rnd_state=1):
                 Y[i] = c
                 i += 1
 
-        X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=rnd_state)
-        X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=rnd_state)
-
-        with h5py.File(hdf_path, 'w') as f:
-            f.create_dataset("X_train", data=X_train, compression='gzip')
-            f.create_dataset("X_val", data=X_val, compression='gzip')
-            f.create_dataset("X_test", data=X_test, compression='gzip')
-            f.create_dataset("y_train", data=y_train, compression='gzip')
-            f.create_dataset("y_val", data=y_val, compression='gzip')
-            f.create_dataset("y_test", data=y_test, compression='gzip')
+        np.savez_compressed(npz_path, X=X, Y=Y)
     
     else:
 
-        f = h5py.File(hdf_path, 'r')
-        X_train, y_train = f['X_train'], f['y_train']
-        X_val, y_val = f['X_val'], f['y_val']
-        X_test, y_test = f['X_test'], f['y_test']
+        data = np.load(npz_path)
+        X, Y = data['X'], data['Y']
+
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=rnd_state)
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=rnd_state)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
