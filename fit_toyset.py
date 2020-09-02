@@ -14,7 +14,7 @@ from pathlib import Path
 
 from src.baselines import OptTree
 from src.datasets import toy_dataset
-from src.LT_models import LTBinaryClassifier
+from src.LT_models import LTBinaryClassifier, LTRegressor
 from src.metrics import LT_dendrogram_purity
 from src.monitors import MonitorTree
 from src.optimization import train_batch
@@ -34,20 +34,33 @@ def main(cfg):
     NORM = float('inf')
 
     # generate toy dataset
-    X, Y = toy_dataset(cfg.dataset.N, cfg.dataset.DISTR)
+    data = toy_dataset(cfg.dataset.N, cfg.dataset.DISTR)
 
     if cfg.model.TYPE == 'LT':
 
         pruning = cfg.model.REG > 0
 
-        # model = LTBinaryClassifier.load_model(SAVE_DIR) # to load a pretrained model instead
-        model = LTBinaryClassifier(cfg.model.BST_DEPTH, 2, pruned=pruning, linear=cfg.model.LINEAR, split_func=cfg.model.SPLIT)
+        if cfg.dataset.DISTR == 'reg-xor':
+            
+            X, Y, labels = data
+            model = LTRegressor(cfg.model.BST_DEPTH, 2, 1, pruned=pruning, linear=cfg.model.LINEAR, split_func=cfg.model.SPLIT)
+
+            # init loss
+            criterion = torch.nn.MSELoss(reduction="mean")
+
+        else:
+
+            X, Y = data
+            labels = Y
+
+            # model = LTBinaryClassifier.load_model(SAVE_DIR) # to load a pretrained model instead
+            model = LTBinaryClassifier(cfg.model.BST_DEPTH, 2, pruned=pruning, linear=cfg.model.LINEAR, split_func=cfg.model.SPLIT)
+
+            # init loss
+            criterion = torch.nn.BCELoss(reduction="mean")
 
         # init optimizer
         optimizer = torch.optim.SGD(model.parameters(), lr=cfg.model.LR)
-
-        # init loss
-        criterion = torch.nn.BCELoss(reduction="mean")
 
         monitor = MonitorTree(pruning, SAVE_DIR)
 
@@ -69,9 +82,6 @@ def main(cfg):
         raise NotImplementedError()
 
     # ---------------------------------------------------------------------- PLOT PREDICTIONS
-    # define colors (looks good also in printed grey scales)
-    colors = [(1, 1, 1), (0.5, 0.5, 1)]
-    cm = LinearSegmentedColormap.from_list('twocolor', colors, N=100)
 
     # create a mesh to plot in (points spread uniformly over the space)
     H = .02  # step size in the mesh
@@ -85,22 +95,22 @@ def main(cfg):
     if cfg.model.TYPE == 'LT':
 
         t_x = torch.from_numpy(test_x).float()
-        y_pred = model.predict(t_x).numpy()
+        _, y_pred = model.predict_bst(t_x)
 
     else:
         y_pred = model.predict(test_x)
     
     y_pred = y_pred.reshape(xx.shape)
 
-    score, class_hist = LT_dendrogram_purity(X, Y, model, bst, 2)
+    score, class_hist = LT_dendrogram_purity(X, labels, model, bst, 2)
     print("Dendrogram purity:", score)
 
-    # plot class boundaries
-    plt.contourf(xx, yy, y_pred, cmap=cm, alpha=0.6)
+    # plot leaf boundaries
+    plt.contourf(xx, yy, y_pred, cmap=plt.cm.tab20c, alpha=0.6)
 
     # plot training points with true labels
-    plt.scatter(X[Y == 0][:,0], X[Y == 0][:,1], cmap=cm, s=20, marker="o", edgecolors=colors[1], c=colors[0])
-    plt.scatter(X[Y == 1][:,0], X[Y == 1][:,1], cmap=cm, s=20, marker="^", c=colors[1])
+    plt.scatter(X[labels == 0][:,0], X[labels == 0][:,1], s=20, marker="o", c='k')
+    plt.scatter(X[labels == 1][:,0], X[labels == 1][:,1], s=20, marker="^", c='k')
 
     plt.xlim(xx.min(),xx.max())
     plt.ylim(yy.min(),yy.max())
