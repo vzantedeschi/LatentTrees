@@ -39,6 +39,10 @@ class BinarySearchTree():
 
         return (n - 1) // 2
 
+    def is_ancestor(self, n1, n2):
+
+        return self.find_LCA(n1, n2) == n1
+
     def predict(self, z):
         """ each leaf corresponds to a class """
         labels = np.argmax(z[:, self.leaves], 1)

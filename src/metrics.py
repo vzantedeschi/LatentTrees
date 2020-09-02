@@ -4,16 +4,24 @@ import torch
 import itertools
 from scipy.stats import mode
 
-def LT_dendrogram_purity(dataloader, true_y, model, bst, nb_classes):
+def LT_dendrogram_purity(dataset, true_y, model, bst, nb_classes):
 
-    zs, labels = [], []
-    for batch in dataloader:
-        # get tree representation of test points
-        t_x, _ = batch
-        z, l = model.predict_bst(t_x)
+    if isinstance(dataset, np.ndarray):
+        
+        zs, labels = model.predict_bst(torch.from_numpy(dataset))
+    
+    else:
 
-        zs.append(z)
-        labels.append(l)
+        zs, labels = [], []
+        for batch in dataset:
+            # get tree representation of test points
+            t_x, _ = batch
+            z, l = model.predict_bst(t_x)
+
+            zs.append(z)
+            labels.append(l)
+
+        zs, labels = np.vstack(zs), np.hstack(labels)        
 
     # get class histograms over tree nodes
     class_hist = np.empty((nb_classes, zs.shape[1]))
