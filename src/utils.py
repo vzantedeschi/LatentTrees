@@ -32,6 +32,7 @@ def download(url, filename, delete_if_interrupted=True, chunk_size=4096):
                         if data:  # filter-out keep-alive chunks
                             f.write(data)
                             progressbar.update(len(data))
+
     except Exception as e:
         if delete_if_interrupted:
             print("Removing incomplete download {}.".format(filename))

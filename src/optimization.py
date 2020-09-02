@@ -25,7 +25,7 @@ def train_batch(x, y, LT_model, optimizer, criterion, nb_iter=1e4, reg=10, norm=
 
         loss = criterion(y_pred, t_y)
         if pruning:
-            obj = loss + reg * torch.norm(LT_model.latent_tree.eta, p=norm)
+            obj = loss + reg * LT_model.latent_tree.bst.nb_nodes * torch.norm(LT_model.latent_tree.eta, p=norm)
             pbar.set_description("train loss + reg %s" % obj.detach().numpy())
 
         else:
