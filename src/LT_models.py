@@ -23,7 +23,7 @@ class Linear(torch.nn.Module):
 
 class MLP(torch.nn.Module):
     
-    def __init__(self, in_size, out_size, layers=1, dropout=0., **kwargs):
+    def __init__(self, in_size, out_size, layers=2, dropout=0., **kwargs):
         
         super(MLP, self).__init__()
         
@@ -203,7 +203,7 @@ class LTModel(torch.nn.Module):
         if self.latent_tree.split_func == 'linear':
 
             XA = self.latent_tree.split(X)
-            return (XA / torch.norm(self.latent_tree.split.weight, dim=1, p=2))
+            return (XA / torch.norm(self.latent_tree.split[1].weight, dim=1, p=2))
         
         else:
             raise NotImplementedError
