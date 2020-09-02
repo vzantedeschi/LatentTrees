@@ -20,7 +20,7 @@ from src.tabular_datasets import Dataset
 from src.utils import make_directory, TorchDataset
 
 SEED = 1337
-DATA_NAME = "COVTYPE"
+DATA_NAME = "GLASS"
 LR = 0.1
 EPOCHS = 100
 
@@ -49,6 +49,12 @@ elif DATA_NAME == "COVTYPE":
     out_features = [3, 4]
     in_features = list(set(range(54)) - set(out_features))
     BATCH_SIZE = 512
+    SPLIT_FUNC = 'linear'
+
+elif DATA_NAME == "GLASS":
+    out_features = [7, 8]
+    in_features = list(set(range(9)) - set(out_features))
+    BATCH_SIZE = 8
     SPLIT_FUNC = 'linear'
 
 root_dir = Path("./results/optuna/clustering-selfsup/") / "{}/out-feats={}/split={}".format(DATA_NAME, out_features, SPLIT_FUNC)
@@ -125,7 +131,7 @@ def objective(trial):
             monitor.close()
             raise optuna.TrialPruned()
 
-        if no_improv == 10:
+        if no_improv == EPOCHS // 5:
             break
     
     model = LTRegressor.load_model(save_dir)
