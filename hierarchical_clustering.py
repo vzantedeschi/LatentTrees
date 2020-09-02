@@ -119,9 +119,9 @@ monitor.close()
 
 model = LTRegressor.load_model(save_dir)
 
-score, _ = LT_dendrogram_purity(data.X_valid_in, data.y_valid, model, model.latent_tree.bst, num_classes)
+score, _ = LT_dendrogram_purity(valloader, data.y_valid, model, model.latent_tree.bst, num_classes)
 
 print("Epoch %i: validation purity = {}\n".format(best_e, score))
 
-score, _ = LT_dendrogram_purity(data.X_test_in, data.y_test, model, model.latent_tree.bst, num_classes)
+score, _ = LT_dendrogram_purity(testloader, data.y_test, model, model.latent_tree.bst, num_classes)
 print("Epoch %i: test mse = %f; test purity = %f\n" % (best_e, test_loss['MSE'], score))

@@ -4,21 +4,27 @@ import torch
 import itertools
 from scipy.stats import mode
 
-def LT_dendrogram_purity(X, Y, model, bst, nb_classes):
+def LT_dendrogram_purity(dataloader, true_y, model, bst, nb_classes):
 
-    # get tree representation of test points
-    zs, labels = model.predict_bst(torch.from_numpy(X).float())
+    zs, labels = [], []
+    for batch in dataloader:
+        # get tree representation of test points
+        t_x, _ = batch
+        z, l = model.predict_bst(t_x)
+
+        zs.append(z)
+        labels.append(l)
 
     # get class histograms over tree nodes
     class_hist = np.empty((nb_classes, zs.shape[1]))
 
     for c in range(nb_classes):
         
-        class_hist[c] = np.sum(zs[Y == c] > 0, axis=0)
+        class_hist[c] = np.sum(zs[true_y == c] > 0, axis=0)
 
     purity = np.nan_to_num(class_hist / np.sum(class_hist, axis=0)) # node's fraction of points of a class
 
-    return dendrogram_purity(bst, labels, Y, purity, nb_classes), class_hist
+    return dendrogram_purity(bst, labels, true_y, purity, nb_classes), class_hist
 
 def dendrogram_purity(bst, pred_y, true_y, purity, nb_classes):
 
@@ -57,11 +63,9 @@ def node_statistics(X, Y, model):
         stds.append(np.std(X[z_t > 0]))
 
     # mean, std and mode of target values assigned to each node
-    y_stds, y_means, y_modes = [], [], []
+    y_distrs = []
     for z_t in zs.T:
-        y_stds.append(np.std(Y[z_t > 0]))
-        y_means.append(np.mean(Y[z_t > 0]))
-        y_modes.append(mode(Y[z_t > 0])[0][0])
+        y_distrs.append(Y[z_t > 0])
 
     # distance from decision boundaries of points assigned to each node
     split_dists = model.db_distance(x).detach().numpy()
@@ -74,8 +78,7 @@ def node_statistics(X, Y, model):
         dist_medians.append(np.median(dist_t[z_t > 0]))
         dist_means.append(np.mean(dist_t[z_t > 0]))
 
-    return np.stack(dist_medians), np.stack(dist_means), np.stack(stds), y_modes, y_means, y_stds
-
+    return np.stack(dist_medians), np.stack(dist_means), np.stack(stds), y_distrs
 
 if __name__ == "__main__":
 
