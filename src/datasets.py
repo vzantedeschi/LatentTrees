@@ -20,7 +20,7 @@ def toy_dataset(n=1000, distr="xor", dim=2):
         X = np.random.uniform(low=tuple([-1.] * dim), high=tuple([1.] * dim), size=(n, dim))
         Y = (X[:,0] * X[:,1] >= 0).astype(int)
 
-        return X, Y
+        return X.astype(np.float32), Y
 
     elif distr == "reg-xor":
         
@@ -31,7 +31,7 @@ def toy_dataset(n=1000, distr="xor", dim=2):
         Y[labels] = np.random.normal(0.8, 0.1, np.sum(labels))
         Y[~labels] = np.random.normal(0.2, 0.1, np.sum(~labels))
 
-        return X, Y, labels
+        return X.astype(np.float32), Y.astype(np.float32), labels
 
     elif distr == "swissroll":
 
@@ -46,7 +46,7 @@ def toy_dataset(n=1000, distr="xor", dim=2):
         X = np.r_[X1[:,::2] / 15, X2]
         Y = np.r_[Y1, Y2]
 
-        return X, Y
+        return X.astype(np.float32), Y
 
     else:
         NotImplementedError
