@@ -149,12 +149,12 @@ def fetch_ALOI(path, valid_size=0.2, test_size=0.2, rnd_state=1):
         X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=rnd_state)
 
         with h5py.File(hdf_path, 'w') as f:
-            f.create_dataset("X_train", data=X_train)
-            f.create_dataset("X_val", data=X_val)
-            f.create_dataset("X_test", data=X_test)
-            f.create_dataset("y_train", data=y_train)
-            f.create_dataset("y_val", data=y_val)
-            f.create_dataset("y_test", data=y_test)
+            f.create_dataset("X_train", data=X_train, compression='gzip')
+            f.create_dataset("X_val", data=X_val, compression='gzip')
+            f.create_dataset("X_test", data=X_test, compression='gzip')
+            f.create_dataset("y_train", data=y_train, compression='gzip')
+            f.create_dataset("y_val", data=y_val, compression='gzip')
+            f.create_dataset("y_test", data=y_test, compression='gzip')
     
     else:
 

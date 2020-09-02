@@ -71,9 +71,9 @@ class Dataset:
             self.std[self.std == 0.] = 1.
 
             if dataset != 'ALOI':
-                self.X_train = (self.X_train - mean) / std
-                self.X_valid = (self.X_valid - mean) / std
-                self.X_test = (self.X_test - mean) / std
+                self.X_train = (self.X_train - self.mean) / self.std
+                self.X_valid = (self.X_valid - self.mean) / self.std
+                self.X_test = (self.X_test - self.mean) / self.std
              
     def to_csv(self, path=None):
         if path == None:
