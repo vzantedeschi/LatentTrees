@@ -53,6 +53,8 @@ def objective(trial):
         save_dir = root_dir / "depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
         model = LTBinaryClassifier(TREE_DEPTH, in_features, pruned=pruning, linear=LINEAR, layers=MLP_LAYERS, dropout=DROPOUT)
 
+    print(model.count_parameters(), "model's parameters")
+    
     save_dir.mkdir(parents=True, exist_ok=True)
 
     # init optimizer

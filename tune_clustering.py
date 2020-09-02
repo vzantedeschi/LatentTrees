@@ -103,15 +103,18 @@ def objective(trial):
 
     best_val_loss = float('inf')
     best_e = -1
+    no_improv = 0
     for e in range(EPOCHS):
         train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
         
         val_loss = evaluate(valloader, model, {'MSE': criterion}, epoch=e, monitor=monitor)
         
+        no_improv += 1
         if val_loss['MSE'] <= best_val_loss:
             best_val_loss = val_loss['MSE']
             best_e = e
-            LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_mse=val_loss['MSE'])
+            # LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_mse=val_loss['MSE'])
+            no_improv = 0
 
         # reduce learning rate if needed
         lr_scheduler.step(val_loss['MSE'])
@@ -120,6 +123,9 @@ def objective(trial):
         if np.isnan(val_loss['MSE']):
             monitor.close()
             raise optuna.TrialPruned()
+
+        if no_improv == 10:
+            break
     
     model = LTRegressor.load_model(save_dir)
     score, _ = LT_dendrogram_purity(data.X_valid_in, data.y_valid, model, model.latent_tree.bst, num_classes)
