@@ -22,8 +22,7 @@ from src.utils import make_directory, TorchDataset
 SEED = 1337
 DATA_NAME = "COVTYPE"
 LR = 0.1
-EPOCHS = 50
-SPLIT_FUNC = 'linear' # or 'conv'
+EPOCHS = 100
 
 if torch.cuda.is_available():
     pin_memory = True
@@ -44,11 +43,13 @@ if DATA_NAME == "ALOI":
     in_features = [0, 2] # R and B
     out_features = [1] # G
     BATCH_SIZE = 128
+    SPLIT_FUNC = 'conv'
 
 elif DATA_NAME == "COVTYPE":
     out_features = [3, 4]
     in_features = list(set(range(54)) - set(out_features))
     BATCH_SIZE = 512
+    SPLIT_FUNC = 'linear'
 
 root_dir = Path("./results/optuna/clustering-selfsup/") / "{}/out-feats={}/split={}".format(DATA_NAME, out_features, SPLIT_FUNC)
 
@@ -113,7 +114,7 @@ def objective(trial):
         if val_loss['MSE'] <= best_val_loss:
             best_val_loss = val_loss['MSE']
             best_e = e
-            # LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_mse=val_loss['MSE'])
+            LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_mse=val_loss['MSE'])
             no_improv = 0
 
         # reduce learning rate if needed
@@ -141,7 +142,7 @@ def objective(trial):
 if __name__ == "__main__":
 
     study = optuna.create_study(study_name=DATA_NAME, direction="maximize")
-    study.optimize(objective, n_trials=20)
+    study.optimize(objective, n_trials=100)
 
     print(study.best_params, study.best_value)
     df = study.trials_dataframe(attrs=('number', 'value', 'params', 'state'))

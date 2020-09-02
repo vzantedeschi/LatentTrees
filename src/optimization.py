@@ -83,7 +83,7 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
         obj.backward()
 
         optimizer.step()
-
+        
         if monitor:
             monitor.write(model, i + last_iter, train={"Loss": loss.detach()})
             
