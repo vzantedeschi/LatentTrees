@@ -208,6 +208,9 @@ class LTModel(torch.nn.Module):
         else:
             raise NotImplementedError
 
+    def count_parameters(self):
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
     @classmethod
     def load_model(cls, load_dir, **kwargs):
 
