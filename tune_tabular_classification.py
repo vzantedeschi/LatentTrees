@@ -20,7 +20,7 @@ SEED = 1225
 DATA_NAME = "CLICK"
 LR = 0.1
 BATCH_SIZE = 512 
-EPOCHS = 50
+EPOCHS = 100
 LINEAR = True
 
 data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
@@ -80,24 +80,31 @@ def objective(trial):
 
     best_val_loss = float("inf")
     best_e = -1
+    no_improv = 0
     for e in range(EPOCHS):
         train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
 
         val_loss = evaluate(valloader, model, {'ER': eval_criterion}, epoch=e, monitor=monitor)
-
+        
+        no_improv += 1
         if val_loss['ER'] <= best_val_loss:
             best_val_loss = val_loss['ER']
             best_e = e
+            no_improv = 0
             # save_model(model, optimizer, state, save_dir)
         
         # reduce learning rate if needed
         lr_scheduler.step(val_loss['ER'])
+        monitor.write(model, e, train={"lr": optimizer.param_groups[0]['lr']})
 
         trial.report(val_loss['ER'], e)
         # Handle pruning based on the intermediate value.
         if trial.should_prune() or np.isnan(val_loss['ER']):
             monitor.close()
             raise optuna.TrialPruned()
+
+        if no_improv == 10:
+            break
 
     monitor.close()
 
