@@ -14,13 +14,13 @@ from src.LT_models import LTRegressor
 from src.metrics import LT_dendrogram_purity
 from src.monitors import MonitorTree
 from src.optimization import train_stochastic, evaluate
-from src.tabular_datasets import Dataset
-from src.utils import make_directory, TorchDataset
+from src.datasets import Dataset, TorchDataset
+from src.utils import deterministic 
 
 DATA_NAME = "GLASS"
 TREE_DEPTH = 8
 REG = 498.073
-LR = 0.1
+LR = 0.01
 EPOCHS = 100
 
 pruning = REG > 0
@@ -54,29 +54,27 @@ elif DATA_NAME == "GLASS":
     BATCH_SIZE = 8
     SPLIT = 'linear'
 
+data = Dataset(DATA_NAME, normalize=True, in_features=in_features, out_features=out_features, seed=459107)
+classes = np.unique(data.y_train)
+num_classes = max(classes) + 1
+
+if DATA_NAME == "ALOI":
+    trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE, shuffle=True, num_workers=12, pin_memory=pin_memory)
+    valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
+    testloader = DataLoader(TorchDataset(data.X_test_in, data.X_test_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
+
+else:
+    trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out), batch_size=BATCH_SIZE, shuffle=True, num_workers=12, pin_memory=pin_memory)
+    valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
+    testloader = DataLoader(TorchDataset(data.X_test_in, data.X_test_out), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
+
 test_scores= []
 for SEED in [1225, 1337, 2020, 6021991]:
 
-    data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
-    classes = np.unique(data.y_train)
-    num_classes = max(classes) + 1
+    deterministic(SEED)
 
     save_dir = Path("./results/clustering-selfsup/") / DATA_NAME / "out-feats={}/depth={}/reg={}/seed={}".format(out_features, TREE_DEPTH, REG, SEED)
-
     save_dir.mkdir(parents=True, exist_ok=True)
-
-    data.X_train_in, data.X_valid_in, data.X_test_in = data.X_train[:, in_features], data.X_valid[:, in_features], data.X_test[:, in_features]
-    data.X_train_out, data.X_valid_out, data.X_test_out = data.X_train[:, out_features], data.X_valid[:, out_features], data.X_test[:, out_features]
-    
-    if DATA_NAME == "ALOI":
-        trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE, shuffle=True, num_workers=12, pin_memory=pin_memory)
-        valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
-        testloader = DataLoader(TorchDataset(data.X_test_in, data.X_test_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
-
-    else:
-        trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out), batch_size=BATCH_SIZE, shuffle=True, num_workers=12, pin_memory=pin_memory)
-        valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
-        testloader = DataLoader(TorchDataset(data.X_test_in, data.X_test_out), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
 
     model = LTRegressor(TREE_DEPTH, data.X_train_in.shape[1:], data.X_train_out.shape[1:], pruned=pruning, split_func=SPLIT)
 
@@ -101,6 +99,8 @@ for SEED in [1225, 1337, 2020, 6021991]:
         'dataset': DATA_NAME,
         'reg': REG,
         'linear': True,
+        'in_features': in_features,
+        'out_features': out_features,
     }
 
     best_val_loss = float('inf')

@@ -30,7 +30,7 @@ class Dataset:
     Code adapted from https://github.com/Qwicen/node/blob/master/lib/data.py .
 
     """
-    def __init__(self, dataset, data_path='./DATA', normalize=False, **kwargs):
+    def __init__(self, dataset, data_path='./DATA', normalize=False, in_features=None, out_features=None, **kwargs):
         """
         Dataset is a dataclass that contains all training and evaluation data required for an experiment
         :param dataset: a pre-defined dataset name (see DATSETS) or a custom dataset
@@ -62,6 +62,12 @@ class Dataset:
                     self.X_train = (self.X_train - self.mean) / self.std
                     self.X_valid = (self.X_valid - self.mean) / self.std
                     self.X_test = (self.X_test - self.mean) / self.std
+
+            if in_features is not None:
+                self.X_train_in, self.X_valid_in, self.X_test_in = self.X_train[:, in_features], self.X_valid[:, in_features], self.X_test[:, in_features]
+
+            if out_features is not None:
+                self.X_train_out, self.X_valid_out, self.X_test_out = self.X_train[:, out_features], self.X_valid[:, out_features], self.X_test[:, out_features]
 
         elif dataset in TOY_DATASETS:
             data_dict = toy_dataset(distr=dataset, **kwargs)

@@ -16,8 +16,8 @@ from src.LT_models import LTRegressor
 from src.metrics import LT_dendrogram_purity
 from src.monitors import MonitorTree
 from src.optimization import train_stochastic, evaluate
-from src.tabular_datasets import Dataset
-from src.utils import make_directory, TorchDataset
+from src.datasets import Dataset, TorchDataset
+from src.utils import deterministic
 
 SEED = 1337
 DATA_NAME = "GLASS"
@@ -33,10 +33,6 @@ else:
     device = torch.device("cpu")
 
 print("Training on", device)
-
-data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
-classes = np.unique(data.y_train)
-num_classes = max(classes) + 1
 
 # selecting input and output features for self-supervised training
 if DATA_NAME == "ALOI":
@@ -57,10 +53,13 @@ elif DATA_NAME == "GLASS":
     BATCH_SIZE = 8
     SPLIT_FUNC = 'linear'
 
-root_dir = Path("./results/optuna/clustering-selfsup/") / "{}/out-feats={}/split={}".format(DATA_NAME, out_features, SPLIT_FUNC)
+deterministic(SEED)
 
-data.X_train_in, data.X_valid_in = data.X_train[:, in_features], data.X_valid[:, in_features]
-data.X_train_out, data.X_valid_out = data.X_train[:, out_features], data.X_valid[:, out_features]
+data = Dataset(DATA_NAME, normalize=True, in_features=in_features, out_features=out_features, seed=459107)
+classes = np.unique(data.y_train)
+num_classes = max(classes) + 1
+
+root_dir = Path("./results/optuna/clustering-selfsup/") / "{}/out-feats={}/split={}".format(DATA_NAME, out_features, SPLIT_FUNC)
 
 if DATA_NAME == "ALOI":
     trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE, shuffle=True, num_workers=12, pin_memory=pin_memory)
@@ -106,6 +105,8 @@ def objective(trial):
         'dataset': DATA_NAME,
         'reg': REG,
         'linear': True,
+        'in_features': in_features,
+        'out_features': out_features,
     }
 
     best_val_loss = float('inf')
