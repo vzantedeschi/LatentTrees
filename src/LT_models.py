@@ -212,16 +212,19 @@ class LTModel(torch.nn.Module):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
     @classmethod
-    def load_model(cls, load_dir, **kwargs):
-
+    def load_model(cls, load_dir, add_load):
+        
         checkpoint = torch.load(Path(load_dir) / 'model.t7')
         
         model = cls(**checkpoint, **checkpoint['kwargs'])
         model.load_state_dict(checkpoint['model_state_dict'])
 
-        if 'optimizer' in kwargs.keys():
-            kwargs['optimizer'].load_state_dict(checkpoint['optimizer_state_dict'])
+        if 'optimizer' in add_load.keys():
+            add_load['optimizer'].load_state_dict(checkpoint['optimizer_state_dict'])
 
+        if 'checkpoint' in add_load.keys():
+            add_load['checkpoint'] = checkpoint
+        
         return model
   
     def save_model(self, optimizer, state, save_dir, **kwargs):
