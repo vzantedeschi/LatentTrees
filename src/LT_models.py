@@ -215,8 +215,8 @@ class LTModel(torch.nn.Module):
     def load_model(cls, load_dir, **kwargs):
 
         checkpoint = torch.load(Path(load_dir) / 'model.t7')
-
-        model = cls(**checkpoint)
+        
+        model = cls(**checkpoint, **checkpoint['kwargs'])
         model.load_state_dict(checkpoint['model_state_dict'])
 
         if 'optimizer' in kwargs.keys():
