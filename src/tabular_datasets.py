@@ -1,8 +1,7 @@
 """
-Code adapted from https://github.com/Qwicen/node/blob/master/lib/data.py .
+    Code adapted from https://github.com/Qwicen/node/blob/master/lib/data.py .
 
 """
-
 import os
 import bz2
 import numpy as np
@@ -11,80 +10,14 @@ import gzip
 import shutil
 
 import torch
-import random
 import warnings
 
 from sklearn.datasets import load_svmlight_file
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import QuantileTransformer
 
 from category_encoders import LeaveOneOutEncoder
 
-from src.datasets import fetch_GLASS, fetch_COVTYPE, fetch_ALOI
 from src.utils import download
-
-class Dataset:
-
-    def __init__(self, dataset, random_state, data_path='./DATA', normalize=False, **kwargs):
-        """
-        Dataset is a dataclass that contains all training and evaluation data required for an experiment
-        :param dataset: a pre-defined dataset name (see DATSETS) or a custom dataset
-            Your dataset should be at (or will be downloaded into) {data_path}/{dataset}
-        :param random_state: global random seed for an experiment
-        :param data_path: a shared data folder path where the dataset is stored (or will be downloaded into)
-        :param normalize: standardize features by removing the mean and scaling to unit variance
-        :param kwargs: depending on the dataset, you may select train size, test size or other params
-            If dataset is not in DATASETS, provide six keys: X_train, y_train, X_valid, y_valid, X_test and y_test
-        """
-        np.random.seed(random_state)
-        torch.manual_seed(random_state)
-        random.seed(random_state)
-
-        if dataset in DATASETS:
-            data_dict = DATASETS[dataset](os.path.join(data_path, dataset), **kwargs)
-        else:
-            assert all(key in kwargs for key in ('X_train', 'y_train', 'X_valid', 'y_valid', 'X_test', 'y_test')), \
-                "Unknown dataset. Provide X_train, y_train, X_valid, y_valid, X_test and y_test params"
-            data_dict = kwargs
-
-        self.data_path = data_path
-        self.dataset = dataset
-
-        self.X_train = data_dict['X_train']
-        self.y_train = data_dict['y_train']
-        self.X_valid = data_dict['X_valid']
-        self.y_valid = data_dict['y_valid']
-        self.X_test = data_dict['X_test']
-        self.y_test = data_dict['y_test']
-
-        if all(query in data_dict.keys() for query in ('query_train', 'query_valid', 'query_test')):
-            self.query_train = data_dict['query_train']
-            self.query_valid = data_dict['query_valid']
-            self.query_test = data_dict['query_test']
-
-        if normalize:
-            print("Normalize dataset")
-            self.mean = np.mean(self.X_train, axis=0, dtype=np.float32)
-            self.std = np.std(self.X_train, axis=0, dtype=np.float32)
-
-            # if constants, set std to 1
-            self.std[self.std == 0.] = 1.
-
-            if dataset != 'ALOI':
-                self.X_train = (self.X_train - self.mean) / self.std
-                self.X_valid = (self.X_valid - self.mean) / self.std
-                self.X_test = (self.X_test - self.mean) / self.std
-             
-    def to_csv(self, path=None):
-        if path == None:
-            path = os.path.join(self.data_path, self.dataset)
-
-        np.savetxt(os.path.join(path, 'X_train.csv'), self.X_train, delimiter=',')
-        np.savetxt(os.path.join(path, 'X_valid.csv'), self.X_valid, delimiter=',')
-        np.savetxt(os.path.join(path, 'X_test.csv'), self.X_test, delimiter=',')
-        np.savetxt(os.path.join(path, 'y_train.csv'), self.y_train, delimiter=',')
-        np.savetxt(os.path.join(path, 'y_valid.csv'), self.y_valid, delimiter=',')
-        np.savetxt(os.path.join(path, 'y_test.csv'), self.y_test, delimiter=',')
 
 
 def fetch_A9A(path, train_size=None, valid_size=None, test_size=None):
@@ -396,7 +329,7 @@ def fetch_YAHOO(path):
     )
 
 
-def fetch_CLICK(path, valid_size=100_000, validation_seed=None):
+def fetch_CLICK(path, valid_size=100_000, seed=None):
     # based on: https://www.kaggle.com/slamnz/primer-airlines-delay
     csv_path = os.path.join(path, 'click.csv')
     if not os.path.exists(csv_path):
@@ -415,7 +348,7 @@ def fetch_CLICK(path, valid_size=100_000, validation_seed=None):
                     'keyword_id', 'title_id', 'description_id', 'user_id']
 
     X_train, X_val, y_train, y_val = train_test_split(
-        X_train, y_train, test_size=valid_size, random_state=validation_seed)
+        X_train, y_train, test_size=valid_size, random_state=seed)
 
     cat_encoder = LeaveOneOutEncoder()
     cat_encoder.fit(X_train[cat_features], y_train)
@@ -427,18 +360,3 @@ def fetch_CLICK(path, valid_size=100_000, validation_seed=None):
         X_valid=X_val.values.astype('float32'), y_valid=y_val,
         X_test=X_test.values.astype('float32'), y_test=y_test
     )
-
-
-DATASETS = {
-    'A9A': fetch_A9A,
-    'EPSILON': fetch_EPSILON,
-    'PROTEIN': fetch_PROTEIN,
-    'YEAR': fetch_YEAR,
-    'HIGGS': fetch_HIGGS,
-    'MICROSOFT': fetch_MICROSOFT,
-    'YAHOO': fetch_YAHOO,
-    'CLICK': fetch_CLICK,
-    'GLASS': fetch_GLASS,
-    'COVTYPE': fetch_COVTYPE,
-    'ALOI': fetch_ALOI,
-}

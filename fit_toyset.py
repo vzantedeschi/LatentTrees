@@ -4,20 +4,19 @@ import numpy as np
 import pandas as pd
 import torch
 
-import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
+from pathlib import Path
 
+import matplotlib.pyplot as plt
 import networkx as nx
 from networkx.drawing.nx_agraph import graphviz_layout
 
-from pathlib import Path
-
 from src.baselines import OptTree
-from src.datasets import toy_dataset
+from src.datasets import Dataset
 from src.LT_models import LTBinaryClassifier, LTRegressor
 from src.metrics import LT_dendrogram_purity
 from src.monitors import MonitorTree
 from src.optimization import train_batch
+from src.utils import deterministic
 
 @hydra.main(config_path='config/default-xor.yaml')
 def main(cfg):
@@ -28,13 +27,12 @@ def main(cfg):
 
     print("results will be saved in:", SAVE_DIR.resolve())
 
-    np.random.seed(cfg.SEED)
-    torch.manual_seed(cfg.SEED)
+    deterministic(cfg.SEED)
 
     NORM = float('inf')
 
     # generate toy dataset
-    data = toy_dataset(cfg.dataset.N, cfg.dataset.DISTR)
+    data = Dataset(cfg.dataset.DISTR, n=cfg.dataset.N)
 
     if cfg.model.TYPE == 'LT':
 
@@ -42,7 +40,6 @@ def main(cfg):
 
         if cfg.dataset.DISTR == 'reg-xor':
             
-            X, Y, labels = data
             model = LTRegressor(cfg.model.BST_DEPTH, 2, 1, pruned=pruning, linear=cfg.model.LINEAR, split_func=cfg.model.SPLIT)
 
             # init loss
@@ -50,8 +47,7 @@ def main(cfg):
 
         else:
 
-            X, Y = data
-            labels = Y
+            data.labels = data.Y
 
             # model = LTBinaryClassifier.load_model(SAVE_DIR) # to load a pretrained model instead
             model = LTBinaryClassifier(cfg.model.BST_DEPTH, 2, pruned=pruning, linear=cfg.model.LINEAR, split_func=cfg.model.SPLIT)
@@ -64,7 +60,7 @@ def main(cfg):
 
         monitor = MonitorTree(pruning, SAVE_DIR)
 
-        train_batch(X, Y, model, optimizer, criterion, nb_iter=cfg.model.ITER, reg=cfg.model.REG, norm=NORM, monitor=monitor)
+        train_batch(data.X, data.Y, model, optimizer, criterion, nb_iter=cfg.model.ITER, reg=cfg.model.REG, norm=NORM, monitor=monitor)
 
         monitor.close()
         # save model
@@ -75,7 +71,7 @@ def main(cfg):
     elif cfg.model.TYPE == 'OPTREE':
 
         model = OptTree(bst_depth=cfg.model.BST_DEPTH, dim=2, N_min=1)
-        model.train(X, Y)
+        model.train(data.X, data.Y)
         bst = model.bst
 
     else:
@@ -85,8 +81,8 @@ def main(cfg):
 
     # create a mesh to plot in (points spread uniformly over the space)
     H = .02  # step size in the mesh
-    x1_min, x1_max = X[:,0].min() - 0.1, X[:,0].max() + 0.1
-    x2_min, x2_max = X[:,1].min() - 0.1, X[:,1].max() + 0.1
+    x1_min, x1_max = data.X[:,0].min() - 0.1, data.X[:,0].max() + 0.1
+    x2_min, x2_max = data.X[:,1].min() - 0.1, data.X[:,1].max() + 0.1
     xx, yy = np.meshgrid(np.arange(x1_min, x1_max, H), np.arange(x2_min, x2_max, H)) # test points
 
     # estimate learned class boundaries
@@ -102,18 +98,18 @@ def main(cfg):
     
     y_pred = y_pred.reshape(xx.shape)
 
-    score, class_hist = LT_dendrogram_purity(X, labels, model, bst, 2)
+    score, class_hist = LT_dendrogram_purity(data.X, data.labels, model, bst, 2)
     print("Dendrogram purity:", score)
 
     # plot leaf boundaries
     plt.contourf(xx, yy, y_pred, cmap=plt.cm.tab20c, alpha=0.6)
 
     # plot training points with true labels
-    plt.scatter(X[labels == 0][:,0], X[labels == 0][:,1], s=20, marker="o", c='k')
-    plt.scatter(X[labels == 1][:,0], X[labels == 1][:,1], s=20, marker="^", c='k')
+    plt.scatter(data.X[data.labels == 0][:,0], data.X[data.labels == 0][:,1], s=20, marker="o", c='k')
+    plt.scatter(data.X[data.labels == 1][:,0], data.X[data.labels == 1][:,1], s=20, marker="^", c='k')
 
-    plt.xlim(xx.min(),xx.max())
-    plt.ylim(yy.min(),yy.max())
+    plt.xlim(xx.min(), xx.max())
+    plt.ylim(yy.min(), yy.max())
 
     plt.title("{} dataset. lr={}; tree depth={}; iters={}".format(cfg.dataset.DISTR, cfg.model.LR, cfg.model.BST_DEPTH, cfg.model.ITER))
 
