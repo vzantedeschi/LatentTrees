@@ -10,8 +10,8 @@ from qhoptim.pyt import QHAdam
 from src.LT_models import LTBinaryClassifier
 from src.monitors import MonitorTree
 from src.optimization import train_stochastic, evaluate
-from src.tabular_datasets import Dataset
-from src.utils import make_directory, TorchDataset
+from src.datasets import Dataset, TorchDataset
+from src.utils import deterministic
 
 SEED = 1337
 DATA_NAME = "HIGGS"
@@ -22,19 +22,20 @@ BATCH_SIZE = 512
 EPOCHS = 100
 
 save_dir = Path("./results/tab-datasets/") / DATA_NAME / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
-make_directory(save_dir)
+save_dir.mkdir(parents=True, exist_ok=True)
 
 pruning = REG > 0
 
-# load dataset with same configuration as in https://github.com/Qwicen/node/blob/master/notebooks/year_node_shallow.ipynb
-data = Dataset(DATA_NAME, random_state=SEED, quantile_transform=True, quantile_noise=1e-3, normalize=True)
-in_features = data.X_train.shape[1]
-print(np.unique(data.y_test))
+data = Dataset(DATA_NAME, normalize=True, seed=459107)
+print('classes', np.unique(data.y_test))
+
+deterministic(SEED)
+
 trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, shuffle=True)
 valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATCH_SIZE*2, shuffle=False)
 testloader = DataLoader(TorchDataset(data.X_test, data.y_test), batch_size=BATCH_SIZE*2, shuffle=False)
 
-model = LTBinaryClassifier(TREE_DEPTH, in_features, pruned=pruning)
+model = LTBinaryClassifier(TREE_DEPTH, data.X_train.shape[1], pruned=pruning)
 
 # init optimizer
 optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.998))
@@ -53,9 +54,6 @@ state = {
     'loss-function': 'BCE',
     'learning-rate': LR,
     'seed': SEED,
-    'bst_depth': TREE_DEPTH,
-    'in_size': in_features,
-    'pruned': pruning,
     'dataset': DATA_NAME,
     'reg': REG,
 }

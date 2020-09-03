@@ -11,41 +11,37 @@ from qhoptim.pyt import QHAdam
 from src.LT_models import LTRegressor
 from src.monitors import MonitorTree
 from src.optimization import train_stochastic, evaluate
-from src.tabular_datasets import Dataset
-from src.utils import make_directory, TorchDataset
+from src.datasets import Dataset, TorchDataset
+from src.utils import deterministic
 
 DATA_NAME = "MICROSOFT"
 LINEAR = False
-TREE_DEPTH=8 
-REG=784.2480977010307
-MLP_LAYERS=3
-DROPOUT=0.10054922066470592 
+TREE_DEPTH = 8 
+REG = 784.2480977010307
+MLP_LAYERS = 3
+DROPOUT = 0.10054922066470592 
 
 LR = 0.01
 BATCH_SIZE = 512 
-EPOCHS = 100
+EPOCHS = 1
+
+pruning = REG > 0
+
+data = Dataset(DATA_NAME, normalize=True, normalize_target=True)
+in_features = data.X_train.shape[1]
+out_features = 1
+print("target mean = %.5f, std = %.5f" % (data.mean_y, data.std_y))
+
+trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, shuffle=True)
+valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATCH_SIZE*2, shuffle=False)
+testloader = DataLoader(TorchDataset(data.X_test, data.y_test), batch_size=BATCH_SIZE*2, shuffle=False)
 
 test_losses = []
 for SEED in [1225, 1337, 2020, 6021991]:
     save_dir = Path("./results/tabular/") / DATA_NAME / "depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
-    make_directory(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
 
-    pruning = REG > 0
-
-    data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
-    in_features = data.X_train.shape[1]
-    out_features = 1
-
-    # normalize after applying other transformations
-    mu, std = data.y_train.mean(), data.y_train.std()
-    normalize = lambda x: ((x - mu) / std).astype(np.float32)
-    data.y_train, data.y_valid, data.y_test = map(normalize, [data.y_train, data.y_valid, data.y_test])
-
-    print("mean = %.5f, std = %.5f" % (mu, std))
-
-    trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, shuffle=True)
-    valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATCH_SIZE*2, shuffle=False)
-    testloader = DataLoader(TorchDataset(data.X_test, data.y_test), batch_size=BATCH_SIZE*2, shuffle=False)
+    deterministic(SEED)
 
     model = LTRegressor(TREE_DEPTH, in_features, out_features, pruned=pruning, linear=LINEAR, layers=MLP_LAYERS, dropout=DROPOUT)
 
@@ -92,13 +88,13 @@ for SEED in [1225, 1337, 2020, 6021991]:
             break
 
     monitor.close()
-    print("best validation loss (epoch {}): {}\n".format(best_e, best_val_loss * std ** 2))
+    print("best validation loss (epoch {}): {}\n".format(best_e, best_val_loss * data.std_y ** 2))
 
     model = LTRegressor.load_model(save_dir)
     test_loss = evaluate(testloader, model, {'test_MSE': criterion})
-    print("test loss (model of epoch {}): {}\n".format(best_e, test_loss['test_MSE'] * std ** 2))
+    print("test loss (model of epoch {}): {}\n".format(best_e, test_loss['test_MSE'] * data.std_y ** 2))
 
-    test_losses.append(test_loss['test_MSE'] * std ** 2)
+    test_losses.append(test_loss['test_MSE'] * data.std_y ** 2)
 
 print(np.mean(test_losses), np.std(test_losses))
 np.save(save_dir / '../test-losses.npy', test_losses)

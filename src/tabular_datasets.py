@@ -20,7 +20,7 @@ from category_encoders import LeaveOneOutEncoder
 from src.utils import download
 
 
-def fetch_A9A(path, train_size=None, valid_size=None, test_size=None):
+def fetch_A9A(path, train_size=None, valid_size=None, test_size=None, *args):
     train_path = os.path.join(path, 'a9a')
     test_path = os.path.join(path, 'a9a.t')
     if not all(os.path.exists(fname) for fname in (train_path, test_path)):
@@ -65,7 +65,7 @@ def fetch_A9A(path, train_size=None, valid_size=None, test_size=None):
     )
 
 
-def fetch_EPSILON(path, train_size=None, valid_size=None, test_size=None):
+def fetch_EPSILON(path, train_size=None, valid_size=None, test_size=None, *args):
     train_path = os.path.join(path, 'epsilon_normalized')
     test_path = os.path.join(path, 'epsilon_normalized.t')
     if not all(os.path.exists(fname) for fname in (train_path, test_path)):
@@ -119,7 +119,7 @@ def fetch_EPSILON(path, train_size=None, valid_size=None, test_size=None):
     )
 
 
-def fetch_PROTEIN(path, train_size=None, valid_size=None, test_size=None):
+def fetch_PROTEIN(path, train_size=None, valid_size=None, test_size=None, *args):
     """
     https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/multiclass.html#protein
     """
@@ -169,7 +169,7 @@ def fetch_PROTEIN(path, train_size=None, valid_size=None, test_size=None):
     )
 
 
-def fetch_YEAR(path, train_size=None, valid_size=None, test_size=51630):
+def fetch_YEAR(path, train_size=None, valid_size=None, test_size=51630, *args):
     data_path = os.path.join(path, 'data.csv')
     if not os.path.exists(data_path):
         os.makedirs(path, exist_ok=True)
@@ -210,7 +210,7 @@ def fetch_YEAR(path, train_size=None, valid_size=None, test_size=51630):
     )
 
 
-def fetch_HIGGS(path, train_size=None, valid_size=None, test_size=5 * 10 ** 5):
+def fetch_HIGGS(path, train_size=None, valid_size=None, test_size=5 * 10 ** 5, *args):
     data_path = os.path.join(path, 'higgs.csv')
     if not os.path.exists(data_path):
         os.makedirs(path, exist_ok=True)
@@ -255,7 +255,7 @@ def fetch_HIGGS(path, train_size=None, valid_size=None, test_size=5 * 10 ** 5):
     )
 
 
-def fetch_MICROSOFT(path):
+def fetch_MICROSOFT(path, *args):
     train_path = os.path.join(path, 'msrank_train.tsv')
     test_path = os.path.join(path, 'msrank_test.tsv')
     if not all(os.path.exists(fname) for fname in (train_path, test_path)):
@@ -290,7 +290,7 @@ def fetch_MICROSOFT(path):
     )
 
 
-def fetch_YAHOO(path):
+def fetch_YAHOO(path, *args):
     train_path = os.path.join(path, 'yahoo_train.tsv')
     valid_path = os.path.join(path, 'yahoo_valid.tsv')
     test_path = os.path.join(path, 'yahoo_test.tsv')
@@ -329,7 +329,7 @@ def fetch_YAHOO(path):
     )
 
 
-def fetch_CLICK(path, valid_size=100_000, seed=None):
+def fetch_CLICK(path, valid_size=100_000, seed=None, *args):
     # based on: https://www.kaggle.com/slamnz/primer-airlines-delay
     csv_path = os.path.join(path, 'click.csv')
     if not os.path.exists(csv_path):

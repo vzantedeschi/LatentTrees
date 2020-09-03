@@ -13,8 +13,8 @@ from qhoptim.pyt import QHAdam
 from src.LT_models import LTRegressor
 from src.monitors import MonitorTree
 from src.optimization import train_stochastic, evaluate
-from src.tabular_datasets import Dataset
-from src.utils import make_directory, TorchDataset
+from src.datasets import Dataset, TorchDataset
+from src.utils import deterministic
 
 SEED = 1225
 DATA_NAME = "MICROSOFT"
@@ -23,21 +23,17 @@ BATCH_SIZE = 512
 EPOCHS = 100
 LINEAR = False
 
-data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
+data = Dataset(DATA_NAME, normalize=True, normalize_target=True)
 in_features = data.X_train.shape[1]
 out_features = 1
-
-# normalize y
-mu, std = data.y_train.mean(), data.y_train.std()
-normalize = lambda x: ((x - mu) / std).astype(np.float32)
-data.y_train, data.y_valid, data.y_test = map(normalize, [data.y_train, data.y_valid, data.y_test])
-
-print("mean = %.5f, std = %.5f" % (mu, std))
+print("target mean = %.5f, std = %.5f" % (data.mean_y, data.std_y))
 
 root_dir = Path("./results/optuna/tabular/") / "{}/linear={}/".format(DATA_NAME, LINEAR)
 
 trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, num_workers=12, shuffle=True)
 valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATCH_SIZE*2, num_workers=12, shuffle=False)
+
+deterministic(SEED)
 
 def objective(trial):
 
@@ -48,7 +44,8 @@ def objective(trial):
 
     pruning = REG > 0
     save_dir = root_dir / "depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
-    make_directory(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+    
     model = LTRegressor(TREE_DEPTH, in_features, out_features, pruned=pruning, linear=LINEAR, layers=MLP_LAYERS, dropout=DROPOUT)
 
     # init optimizer
@@ -65,16 +62,10 @@ def objective(trial):
 
     state = {
         'batch-size': BATCH_SIZE,
-        'regression': 'linear',
         'loss-function': 'MSE',
         'learning-rate': LR,
         'seed': SEED,
-        'tree-depth': TREE_DEPTH,
         'dataset': DATA_NAME,
-        'reg': REG,
-        'linerar': LINEAR,
-        'layers': MLP_LAYERS,
-        'dropout': DROPOUT,
     }
 
     best_val_loss = float("inf")
@@ -92,7 +83,7 @@ def objective(trial):
         # reduce learning rate if needed
         lr_scheduler.step(val_loss)
 
-        trial.report(val_loss * std**2, e)
+        trial.report(val_loss * data.std_y**2, e)
         # Handle pruning based on the intermediate value.
         if trial.should_prune() or np.isnan(val_loss):
             monitor.close()
@@ -100,7 +91,7 @@ def objective(trial):
 
     monitor.close()
 
-    return best_val_loss * std**2
+    return best_val_loss * data.std_y**2
 
 if __name__ == "__main__":
 

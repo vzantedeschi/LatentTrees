@@ -13,8 +13,8 @@ from qhoptim.pyt import QHAdam
 from src.LT_models import LTBinaryClassifier
 from src.monitors import MonitorTree
 from src.optimization import train_stochastic, evaluate
-from src.tabular_datasets import Dataset
-from src.utils import TorchDataset
+from src.datasets import Dataset, TorchDataset
+from src.utils import deterministic
 
 SEED = 1225
 DATA_NAME = "CLICK"
@@ -23,14 +23,15 @@ BATCH_SIZE = 512
 EPOCHS = 100
 LINEAR = False
 
-data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
-in_features = data.X_train.shape[1]
+data = Dataset(DATA_NAME, normalize=True, seed=459107)
 print('classes', np.unique(data.y_test))
 
 trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, num_workers=12, shuffle=True)
 valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATCH_SIZE*2, num_workers=12, shuffle=False)
 
 root_dir = Path("./results/optuna/tabular/") / "{}/linear={}/".format(DATA_NAME, LINEAR)
+
+deterministic(SEED)
 
 def objective(trial):
 
@@ -47,11 +48,11 @@ def objective(trial):
 
     if LINEAR:
         save_dir = root_dir / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
-        model = LTBinaryClassifier(TREE_DEPTH, in_features, pruned=pruning, linear=LINEAR)
+        model = LTBinaryClassifier(TREE_DEPTH, data.X_train.shape[1], pruned=pruning, linear=LINEAR)
 
     else:
         save_dir = root_dir / "depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
-        model = LTBinaryClassifier(TREE_DEPTH, in_features, pruned=pruning, linear=LINEAR, layers=MLP_LAYERS, dropout=DROPOUT)
+        model = LTBinaryClassifier(TREE_DEPTH, data.X_train.shape[1], pruned=pruning, linear=LINEAR, layers=MLP_LAYERS, dropout=DROPOUT)
 
     print(model.count_parameters(), "model's parameters")
     

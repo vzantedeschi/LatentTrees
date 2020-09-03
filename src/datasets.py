@@ -30,7 +30,7 @@ class Dataset:
     Code adapted from https://github.com/Qwicen/node/blob/master/lib/data.py .
 
     """
-    def __init__(self, dataset, data_path='./DATA', normalize=False, in_features=None, out_features=None, **kwargs):
+    def __init__(self, dataset, data_path='./DATA', normalize=False, normalize_target=False, in_features=None, out_features=None, **kwargs):
         """
         Dataset is a dataclass that contains all training and evaluation data required for an experiment
         :param dataset: a pre-defined dataset name (see DATSETS) or a custom dataset
@@ -51,9 +51,15 @@ class Dataset:
             self.y_test = data_dict['y_test']
 
             if normalize:
+
                 print("Normalize dataset")
-                self.mean = np.mean(self.X_train, axis=0, dtype=np.float32)
-                self.std = np.std(self.X_train, axis=0, dtype=np.float32)
+                if self.X_train.ndim == 2:
+                    self.mean = np.mean(self.X_train, axis=0, dtype=np.float32)
+                    self.std = np.std(self.X_train, axis=0, dtype=np.float32)
+
+                else:
+                    self.mean = np.mean(self.X_train, axis=(0, 2, 3), dtype=np.float32)
+                    self.std = np.std(self.X_train, axis=(0, 2, 3), dtype=np.float32)
 
                 # if constants, set std to 1
                 self.std[self.std == 0.] = 1.
@@ -62,6 +68,19 @@ class Dataset:
                     self.X_train = (self.X_train - self.mean) / self.std
                     self.X_valid = (self.X_valid - self.mean) / self.std
                     self.X_test = (self.X_test - self.mean) / self.std
+
+            if normalize_target:
+
+                print("Normalize target value")
+                self.mean_y = np.mean(self.y_train, axis=0, dtype=np.float32)
+                self.std_y = np.std(self.y_train, axis=0, dtype=np.float32)
+
+                # if constants, set std to 1
+                self.std_y[self.std_y == 0.] = 1.
+
+                self.y_train = (self.y_train - self.mean_y) / self.std_y
+                self.y_valid = (self.y_valid - self.mean_y) / self.std_y
+                self.y_test = (self.y_test - self.mean_y) / self.std_y
 
             if in_features is not None:
                 self.X_train_in, self.X_valid_in, self.X_test_in = self.X_train[:, in_features], self.X_valid[:, in_features], self.X_test[:, in_features]
