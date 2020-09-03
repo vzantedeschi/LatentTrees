@@ -21,7 +21,7 @@ REG=784.2480977010307
 MLP_LAYERS=3
 DROPOUT=0.10054922066470592 
 
-LR = 0.2
+LR = 0.01
 BATCH_SIZE = 512 
 EPOCHS = 100
 
@@ -71,19 +71,25 @@ for SEED in [1225, 1337, 2020, 6021991]:
 
     best_val_loss = float("inf")
     best_e = -1
+    no_improv = 0
     for e in range(EPOCHS):
         train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
 
         val_loss = evaluate(valloader, model, {'valid_MSE': criterion}, epoch=e, monitor=monitor)
         print(f"Epoch {e}: {val_loss}\n")
-
+        
+        no_improv += 1
         if val_loss['valid_MSE'] <= best_val_loss:
             best_val_loss = val_loss['valid_MSE']
             best_e = e
             LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, **val_loss)
+            no_improv = 0
 
         # reduce learning rate if needed
         lr_scheduler.step(val_loss['valid_MSE'])
+
+        if no_improv == EPOCHS // 4:
+            break
 
     monitor.close()
     print("best validation loss (epoch {}): {}\n".format(best_e, best_val_loss * std ** 2))

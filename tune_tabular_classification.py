@@ -21,7 +21,7 @@ DATA_NAME = "CLICK"
 LR = 0.1
 BATCH_SIZE = 512 
 EPOCHS = 100
-LINEAR = True
+LINEAR = False
 
 data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
 in_features = data.X_train.shape[1]
@@ -108,6 +108,7 @@ def objective(trial):
         if no_improv == 10:
             break
 
+    print("Best validation ER:", best_val_loss)
     monitor.close()
 
     return best_val_loss
