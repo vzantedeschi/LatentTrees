@@ -77,6 +77,16 @@ class BinarySearchTree():
 
         return n1
 
+    def get_nodes_level(self, z, depth=0):
+
+        leaves = np.argmax(z[:, self.leaves], 1) + self.nb_split
+
+        res = leaves
+        for i in range(self.depth - depth):
+            res = (res - 1) // 2
+
+        return res 
+
 def str_as_bst(nodes):
 
     depth = int((len(nodes) + 1) ** 0.5)
@@ -106,6 +116,11 @@ if __name__ == "__main__":
     assert bst.find_LCA(5, 6) == 2, bst.find_LCA(5, 6)
     assert bst.find_LCA(0, 6) == 0, bst.find_LCA(0, 6)
     assert bst.find_LCA(1, 6) == 0, bst.find_LCA(1, 6)
+
+    assert bst.get_nodes_level(np.array([[0, 0, 0, 1, 0, 0, 0]]), 0) == 0, bst.get_nodes_level(np.array([[0, 0, 0, 1, 0, 0, 0]]), 0)
+    assert bst.get_nodes_level(np.array([[0, 0, 0, 1, 0, 0, 0]]), 1) == 1, bst.get_nodes_level(np.array([[0, 0, 0, 1, 0, 0, 0]]), 1)
+    assert bst.get_nodes_level(np.array([[0, 0, 0, 1, 0, 0, 0]]), 2) == 3, bst.get_nodes_level(np.array([[0, 0, 0, 1, 0, 0, 0]]), 2)
+    assert bst.get_nodes_level(np.array([[3, 1, 1, 1, 0, 2, 0]]), 1) == 2, bst.get_nodes_level(np.array([[0, 0, 0, 1, 0, 0, 0]]), 1)
 
     bst = BinarySearchTree(4)
 
