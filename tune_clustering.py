@@ -21,7 +21,7 @@ from src.utils import deterministic
 
 SEED = 1337
 DATA_NAME = "GLASS"
-LR = 0.1
+LR = 0.001
 EPOCHS = 100
 
 if torch.cuda.is_available():
@@ -48,7 +48,7 @@ elif DATA_NAME == "COVTYPE":
     SPLIT_FUNC = 'linear'
 
 elif DATA_NAME == "GLASS":
-    out_features = [7, 8]
+    out_features = [0, 1]
     in_features = list(set(range(9)) - set(out_features))
     BATCH_SIZE = 8
     SPLIT_FUNC = 'linear'
@@ -72,13 +72,13 @@ else:
 def objective(trial):
 
     TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 2, 6)
-    REG = trial.suggest_uniform('REG', 0, 1e3)
+    REG = trial.suggest_loguniform('REG', 1e-4, 1e3)
     
     print(f'depth={TREE_DEPTH}, reg={REG}')
     pruning = REG > 0
 
     save_dir = root_dir / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
-    make_directory(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
 
     model = LTRegressor(TREE_DEPTH, data.X_train_in.shape[1:], data.X_train_out.shape[1:], pruned=pruning, split_func=SPLIT_FUNC)
     model.to(device)
