@@ -17,7 +17,7 @@ from src.datasets import Dataset, TorchDataset
 from src.utils import deterministic
 
 SEED = 1225
-DATA_NAME = "MICROSOFT"
+DATA_NAME = "YEAR"
 LR = 0.01
 BATCH_SIZE = 512 
 EPOCHS = 100
@@ -38,15 +38,22 @@ deterministic(SEED)
 def objective(trial):
 
     TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 2, 8)
-    REG = trial.suggest_uniform('REG', 0, 1e3)
+    REG = trial.suggest_loguniform('REG', 0, 1e3)
     MLP_LAYERS = trial.suggest_int('MLP_LAYERS', 2, 7)
     DROPOUT = trial.suggest_uniform('DROPOUT', 0.0, 0.5)
+    SPLIT_FUNC = trial.suggest_categorical("SPLIT_FUNC", ["linear", "elu"])
+
+    COMP_FUNC = trial.suggest_categorical('COMP_FUNC', ["none", "concatenate"])
+    if COMP_FUNC == "concatenate":
+        TWO_PHASED = trial.suggest_categorical("TWO_PHASED", [True, False])
+    else:
+        TWO_PHASED = False
 
     pruning = REG > 0
-    save_dir = root_dir / "depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
+    save_dir = root_dir / "comp={}/split={}/depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(COMP_FUNC, SPLIT_FUNC, TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
     save_dir.mkdir(parents=True, exist_ok=True)
     
-    model = LTRegressor(TREE_DEPTH, in_features, out_features, pruned=pruning, linear=LINEAR, layers=MLP_LAYERS, dropout=DROPOUT)
+    model = LTRegressor(TREE_DEPTH, in_features, out_features, pruned=pruning, linear=LINEAR, layers=MLP_LAYERS, dropout=DROPOUT, split_func=SPLIT_FUNC, comp_func=COMP_FUNC)
 
     # init optimizer
     optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.998))
@@ -68,11 +75,18 @@ def objective(trial):
         'dataset': DATA_NAME,
     }
 
+    if TWO_PHASED:
+        model.freeze("skip")
+
     best_val_loss = float("inf")
     best_e = -1
     for e in range(EPOCHS):
-        train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
 
+        if TWO_PHASED and e == EPOCHS // 2:
+            model.unfreeze("skip")
+
+        train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
+            
         val_loss = evaluate(valloader, model, criterion, epoch=e, monitor=monitor)
 
         if val_loss <= best_val_loss:
