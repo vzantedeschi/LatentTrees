@@ -64,35 +64,40 @@ def dendrogram_purity(bst, pred_y, true_y, purity, nb_classes):
 
     return score / num_pairs
 
-def node_statistics(X, Y, model):
+def node_statistics(X, Y, model, depth):
 
     x = torch.from_numpy(X).float()
     
     # get tree representation of test points
     zs, _ = model.predict_bst(x)
+    tree_shape = zs.shape
+
+    nb_nodes = 2**(depth+1) - 1
+    selected_zs = zs[:, :nb_nodes] # compute only down to given depth
 
     # std of points assigned to each node
     stds = []
-    for z_t in zs.T:
+    for z_t in selected_zs.T:
         stds.append(np.std(X[z_t > 0]))
 
     # mean, std and mode of target values assigned to each node
     y_distrs = []
-    for z_t in zs.T:
+    for z_t in selected_zs.T:
         y_distrs.append(Y[z_t > 0])
 
     # distance from decision boundaries of points assigned to each node
     split_dists = model.db_distance(x).detach().numpy()
-    all_dists = np.zeros(zs.shape)
+
+    all_dists = np.zeros(tree_shape)
     all_dists[:, model.latent_tree.bst.desc_left] = split_dists
     all_dists[:, model.latent_tree.bst.desc_right] = split_dists
 
     dist_medians, dist_means = [], []
-    for z_t, dist_t in zip(zs.T, all_dists.T):
+    for z_t, dist_t in zip(selected_zs.T, all_dists[:, :nb_nodes].T):
         dist_medians.append(np.median(dist_t[z_t > 0]))
         dist_means.append(np.mean(dist_t[z_t > 0]))
 
-    return np.stack(dist_medians), np.stack(dist_means), np.stack(stds), y_distrs
+    return np.stack(dist_medians), np.stack(dist_means), np.stack(stds), y_distrs, zs
 
 if __name__ == "__main__":
 
