@@ -32,11 +32,11 @@ def class_purity(dataset, true_y, model, bst, nb_classes):
 
     purity = np.nan_to_num(class_hist / np.sum(class_hist, axis=0)) # node's fraction of points of a class
 
-    return purity, class_hist
+    return purity, class_hist, labels
 
 def LT_dendrogram_purity(dataset, true_y, model, bst, nb_classes):
 
-    purity, class_hist = class_purity(dataset, true_y, model, bst, nb_classes)
+    purity, class_hist, labels = class_purity(dataset, true_y, model, bst, nb_classes)
 
     return dendrogram_purity(bst, labels, true_y, purity, nb_classes), class_hist
 
