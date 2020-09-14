@@ -4,7 +4,7 @@ import torch
 import itertools
 from scipy.stats import mode
 
-def LT_dendrogram_purity(dataset, true_y, model, bst, nb_classes):
+def class_purity(dataset, true_y, model, bst, nb_classes):
 
     if isinstance(dataset, np.ndarray):
         
@@ -31,6 +31,12 @@ def LT_dendrogram_purity(dataset, true_y, model, bst, nb_classes):
         class_hist[c] = np.sum(zs[true_y == c] > 0, axis=0)
 
     purity = np.nan_to_num(class_hist / np.sum(class_hist, axis=0)) # node's fraction of points of a class
+
+    return purity, class_hist
+
+def LT_dendrogram_purity(dataset, true_y, model, bst, nb_classes):
+
+    purity, class_hist = class_purity(dataset, true_y, model, bst, nb_classes)
 
     return dendrogram_purity(bst, labels, true_y, purity, nb_classes), class_hist
 

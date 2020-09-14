@@ -255,7 +255,7 @@ def fetch_HIGGS(path, train_size=None, valid_size=None, test_size=5 * 10 ** 5, *
     )
 
 
-def fetch_MICROSOFT(path, *args):
+def fetch_MICROSOFT(path, **kwargs):
     train_path = os.path.join(path, 'msrank_train.tsv')
     test_path = os.path.join(path, 'msrank_test.tsv')
     if not all(os.path.exists(fname) for fname in (train_path, test_path)):
