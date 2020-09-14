@@ -49,18 +49,23 @@ class BinarySearchTree():
 
         return labels
 
-    def to_adj_matrix(self):
+    def to_adj_matrix(self, depth=None):
 
         adj_matrix = np.zeros((self.nb_nodes, self.nb_nodes))
         adj_matrix[self.split_nodes, self.desc_left] = 1
         adj_matrix[self.split_nodes, self.desc_right] = 1
 
-        return adj_matrix
+        if depth is None:
+            return adj_matrix
+        else:
+            return adj_matrix[:2**(depth+1) - 1, :2**(depth+1) - 1]
 
-    def normalize(self, z):
+    def normalize(self, z, depth=None):
         """ normalize nodes at same depth """
+        if depth is None:
+            depth = self.depth
 
-        for d in range(self.depth + 1):
+        for d in range(depth + 1):
 
             i = 2 ** d - 1
             z[i:i + 2 ** d] /= sum(z[i:i + 2 ** d])
