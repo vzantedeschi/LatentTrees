@@ -8,6 +8,7 @@ model:
   REG: 0
   LINEAR: True
   SPLIT: elu
+  COMP: residual
 
 dataset:
   DISTR: xor # or swissroll

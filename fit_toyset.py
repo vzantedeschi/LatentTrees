@@ -21,7 +21,7 @@ from src.utils import deterministic
 @hydra.main(config_path='config/default-xor.yaml')
 def main(cfg):
 
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.DISTR}/{cfg.model.TYPE}/split={cfg.model.SPLIT}/depth={cfg.model.BST_DEPTH}/seed={cfg.SEED}/"
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.DISTR}/{cfg.model.TYPE}/split={cfg.model.SPLIT}/comp={cfg.model.COMP}/depth={cfg.model.BST_DEPTH}/seed={cfg.SEED}/"
     SAVE_DIR = Path(SAVE_DIR)
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -40,7 +40,7 @@ def main(cfg):
 
         if cfg.dataset.DISTR == 'reg-xor':
             
-            model = LTRegressor(cfg.model.BST_DEPTH, 2, 1, pruned=pruning, linear=cfg.model.LINEAR, split_func=cfg.model.SPLIT)
+            model = LTRegressor(cfg.model.BST_DEPTH, 2, 1, pruned=pruning, linear=cfg.model.LINEAR, split_func=cfg.model.SPLIT, comp_func=cfg.model.COMP)
 
             # init loss
             criterion = torch.nn.MSELoss(reduction="mean")
@@ -50,7 +50,7 @@ def main(cfg):
             data.labels = data.Y
 
             # model = LTBinaryClassifier.load_model(SAVE_DIR) # to load a pretrained model instead
-            model = LTBinaryClassifier(cfg.model.BST_DEPTH, 2, pruned=pruning, linear=cfg.model.LINEAR, split_func=cfg.model.SPLIT)
+            model = LTBinaryClassifier(cfg.model.BST_DEPTH, 2, pruned=pruning, linear=cfg.model.LINEAR, split_func=cfg.model.SPLIT, comp_func=cfg.model.COMP)
 
             # init loss
             criterion = torch.nn.BCELoss(reduction="mean")

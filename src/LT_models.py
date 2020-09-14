@@ -173,6 +173,20 @@ class LTModel(torch.nn.Module):
         else:
             self.latent_tree = LatentTree(bst_depth, in_size, pruned)
 
+        # init composition function for constructing input for predictor
+        if 'comp_func' in kwargs and kwargs['comp_func'] != "residual":
+
+            if kwargs['comp_func'] == "none":
+                self.comp = lambda x, z: z
+                self.pred_in_size = self.latent_tree.bst.nb_leaves # predictor's input size
+
+            else:
+                raise NotImplementedError
+
+        else:
+            self.comp = lambda x, z: torch.cat((x.view(len(x), -1), z), 1)
+            self.pred_in_size = np.prod(in_size) + self.latent_tree.bst.nb_leaves # predictor's input size
+
     def train(self):
         self.latent_tree.train()
         self.predictor.train()
@@ -186,9 +200,9 @@ class LTModel(torch.nn.Module):
 
     def forward(self, X):
 
-        z = self.latent_tree(X)
+        z = self.latent_tree(X)[:, self.latent_tree.bst.leaves]
 
-        xz = torch.cat((X.view(len(X), -1), z), 1)
+        xz = self.comp(X, z)
 
         return self.predictor(xz)
 
@@ -251,7 +265,7 @@ class LTBinaryClassifier(LTModel):
         del self.params['self']
 
         # init predictor ( [x;z]-> y )
-        self.predictor = LogisticRegression(np.prod(in_size) + self.latent_tree.bst.nb_nodes, 1, linear, **kwargs)
+        self.predictor = LogisticRegression(self.pred_in_size, 1, linear, **kwargs)
 
     def predict(self, X):
 
@@ -272,9 +286,9 @@ class LTClassifier(LTModel):
 
         # init predictor ( [x;z]-> y )
         if linear:
-            self.predictor = Linear(np.prod(in_size) + self.latent_tree.bst.nb_nodes, num_classes)
+            self.predictor = Linear(self.pred_in_size, num_classes)
         else:
-            self.predictor = MLP(np.prod(in_size) + self.latent_tree.bst.nb_nodes, num_classes, **kwargs)
+            self.predictor = MLP(self.pred_in_size, num_classes, **kwargs)
 
     def predict(self, X):
 
@@ -295,9 +309,9 @@ class LTRegressor(LTModel):
         # init predictor ( [x;z]-> y )
 
         if linear:
-            self.predictor = Linear(np.prod(in_size) + self.latent_tree.bst.nb_nodes, np.prod(out_size))
+            self.predictor = Linear(self.pred_in_size, np.prod(out_size))
         else:
-            self.predictor = MLP(np.prod(in_size) + self.latent_tree.bst.nb_nodes, np.prod(out_size), **kwargs)
+            self.predictor = MLP(self.pred_in_size, np.prod(out_size), **kwargs)
 
     def predict(self, X):
 
