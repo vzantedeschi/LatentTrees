@@ -1,7 +1,25 @@
 import numpy as np
 import torch
 
+from torch.optim.lr_scheduler import MultiplicativeLR
+
 from tqdm import tqdm
+
+def twophased_train_batch(x, y, LT_model, optimizer, criterion, nb_iter=1e4, reg=10, norm=float("inf"), monitor=None):
+
+    # train without skip connection the first half iterations then train only predictor the last half iterations
+
+    lr_lambda = lambda i: 0.1
+    lr_scheduler = MultiplicativeLR(optimizer, lr_lambda=lr_lambda)
+
+    LT_model.freeze("skip")
+    train_batch(x, y, LT_model, optimizer, criterion, nb_iter // 2, reg, norm, monitor)
+
+    lr_scheduler.step()
+
+    LT_model.unfreeze("skip")
+    # LT_model.freeze("latent_tree")
+    train_batch(x, y, LT_model, optimizer, criterion, nb_iter // 2, reg, norm, monitor)
 
 def train_batch(x, y, LT_model, optimizer, criterion, nb_iter=1e4, reg=10, norm=float("inf"), monitor=None):
 

@@ -6,6 +6,7 @@ from pathlib import Path
 from src.trees import BinarySearchTree
 from src.monitors import MonitorTree
 from src.qp import pruning_qp
+from src.utils import concat_func, freezed_concat_func, none_func
 
 # ----------------------------------------------------------------------- REGRESSION
 
@@ -174,17 +175,17 @@ class LTModel(torch.nn.Module):
             self.latent_tree = LatentTree(bst_depth, in_size, pruned)
 
         # init composition function for constructing input for predictor
-        if 'comp_func' in kwargs and kwargs['comp_func'] != "residual":
+        if 'comp_func' in kwargs and kwargs['comp_func'] != "concatenate":
 
             if kwargs['comp_func'] == "none":
-                self.comp = lambda x, z: z
+                self.comp = none_func
                 self.pred_in_size = self.latent_tree.bst.nb_leaves # predictor's input size
 
             else:
                 raise NotImplementedError
 
         else:
-            self.comp = lambda x, z: torch.cat((x.view(len(x), -1), z), 1)
+            self.comp = concat_func
             self.pred_in_size = np.prod(in_size) + self.latent_tree.bst.nb_leaves # predictor's input size
 
     def train(self):
@@ -194,6 +195,50 @@ class LTModel(torch.nn.Module):
     def eval(self):
         self.latent_tree.eval()
         self.predictor.eval() 
+
+    def freeze(self, which='predictor'):
+
+        if which == "skip":
+            
+            assert self.comp == concat_func, "Trying to freeze skip connection, but skip connection is not defined. Set <comp_func> to 'concatenate' instead."
+
+            self.comp = freezed_concat_func
+
+        else:
+
+            if which == "predictor":
+                block = self.predictor
+
+            elif which == "latent_tree":
+                block = self.latent_tree
+
+            else:
+                raise Exception("You can freeze either 'latent_tree' layer or 'predictor' layer.")
+
+            for param in block.parameters():
+                param.requires_grad = False
+
+    def unfreeze(self, which='predictor'):
+
+        if which == "skip":
+            
+            assert self.comp == freezed_concat_func or self.comp == concat_func, "Trying to unfreeze skip connection, but skip connection is not defined. Set <comp_func> to 'concatenate' instead."
+
+            self.comp = concat_func
+
+        else:
+
+            if which == "predictor":
+                block = self.predictor
+
+            elif which == "latent_tree":
+                block = self.latent_tree
+
+            else:
+                raise Exception("You can unfreeze either 'latent_tree' layer or 'predictor' layer.")
+
+            for param in block.parameters():
+                param.requires_grad = True
 
     def parameters(self):
         return list(self.latent_tree.parameters()) + list(self.predictor.parameters())

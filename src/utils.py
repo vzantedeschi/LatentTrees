@@ -13,6 +13,23 @@ def deterministic(random_state):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+# --------------------------------------------------------------- COMPOSITION FUNCTIONS
+
+def concat_func(x, z):
+
+    return torch.cat((x.view(len(x), -1), z), 1)
+
+def freezed_concat_func(x, z):
+    """ used to remove skip connection """
+
+    zeros = torch.zeros_like(x)
+
+    return torch.cat((zeros.view(len(x), -1), z), 1)
+
+def none_func(x, z):
+
+    return z
+
 """
 Code adapted from https://github.com/Qwicen/node/blob/master/lib/data.py .
 
