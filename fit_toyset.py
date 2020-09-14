@@ -15,19 +15,19 @@ from src.datasets import Dataset
 from src.LT_models import LTBinaryClassifier, LTRegressor
 from src.metrics import LT_dendrogram_purity
 from src.monitors import MonitorTree
-from src.optimization import train_batch
+from src.optimization import train_batch, twophased_train_batch
 from src.utils import deterministic
 
 @hydra.main(config_path='config/default-xor.yaml')
 def main(cfg):
 
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.DISTR}/{cfg.model.TYPE}/split={cfg.model.SPLIT}/comp={cfg.model.COMP}/depth={cfg.model.BST_DEPTH}/seed={cfg.SEED}/"
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.DISTR}/{cfg.model.TYPE}/twophased={cfg.training.TWO_PHASED}/split={cfg.model.SPLIT}/comp={cfg.model.COMP}/depth={cfg.model.BST_DEPTH}/seed={cfg.training.SEED}/"
     SAVE_DIR = Path(SAVE_DIR)
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
     print("results will be saved in:", SAVE_DIR.resolve())
 
-    deterministic(cfg.SEED)
+    deterministic(cfg.training.SEED)
 
     NORM = float('inf')
 
@@ -36,7 +36,7 @@ def main(cfg):
 
     if cfg.model.TYPE == 'LT':
 
-        pruning = cfg.model.REG > 0
+        pruning = cfg.training.REG > 0
 
         if cfg.dataset.DISTR == 'reg-xor':
             
@@ -56,11 +56,14 @@ def main(cfg):
             criterion = torch.nn.BCELoss(reduction="mean")
 
         # init optimizer
-        optimizer = torch.optim.SGD(model.parameters(), lr=cfg.model.LR)
+        optimizer = torch.optim.SGD(model.parameters(), lr=cfg.training.LR)
 
         monitor = MonitorTree(pruning, SAVE_DIR)
 
-        train_batch(data.X, data.Y, model, optimizer, criterion, nb_iter=cfg.model.ITER, reg=cfg.model.REG, norm=NORM, monitor=monitor)
+        if cfg.training.TWO_PHASED:
+            twophased_train_batch(data.X, data.Y, model, optimizer, criterion, nb_iter=cfg.training.ITER, reg=cfg.training.REG, norm=NORM, monitor=monitor)
+        else:
+            train_batch(data.X, data.Y, model, optimizer, criterion, nb_iter=cfg.training.ITER, reg=cfg.training.REG, norm=NORM, monitor=monitor)
 
         monitor.close()
         # save model
@@ -111,7 +114,7 @@ def main(cfg):
     plt.xlim(xx.min(), xx.max())
     plt.ylim(yy.min(), yy.max())
 
-    plt.title("{} dataset. lr={}; tree depth={}; iters={}".format(cfg.dataset.DISTR, cfg.model.LR, cfg.model.BST_DEPTH, cfg.model.ITER))
+    plt.title("{} dataset. lr={}; tree depth={}; iters={}".format(cfg.dataset.DISTR, cfg.training.LR, cfg.model.BST_DEPTH, cfg.training.ITER))
 
     plt.savefig(SAVE_DIR / f"{cfg.dataset.DISTR}.pdf", bbox_inches='tight', transparent=True)
     plt.clf()
