@@ -163,11 +163,9 @@ class LatentTree(torch.nn.Module):
 
 class LTModel(torch.nn.Module):
 
-    def __init__(self):
+    def __init__(self, bst_depth, in_size, pruned, **kwargs):
 
         torch.nn.Module.__init__(self)
-
-    def set_latent_tree(self, bst_depth, in_size, pruned, **kwargs):
 
         # init latent tree optimizer (x -> z)
         if 'split_func' in kwargs:
@@ -247,12 +245,10 @@ class LTBinaryClassifier(LTModel):
 
     def __init__(self, bst_depth, in_size, pruned=True, linear=True, **kwargs):
 
-        super(LTBinaryClassifier, self).__init__()
+        super(LTBinaryClassifier, self).__init__(bst_depth, in_size, pruned, **kwargs)
 
         self.params = locals()
         del self.params['self']
-
-        self.set_latent_tree(bst_depth, in_size, pruned, **kwargs)
 
         # init predictor ( [x;z]-> y )
         self.predictor = LogisticRegression(np.prod(in_size) + self.latent_tree.bst.nb_nodes, 1, linear, **kwargs)
@@ -269,12 +265,10 @@ class LTClassifier(LTModel):
 
     def __init__(self, bst_depth, in_size, num_classes, pruned=True, linear=True, **kwargs):
 
-        super(LTClassifier, self).__init__()
+        super(LTClassifier, self).__init__(bst_depth, in_size, pruned, **kwargs)
 
         self.params = locals()
         del self.params['self']
-
-        self.set_latent_tree(bst_depth, in_size, pruned, **kwargs)
 
         # init predictor ( [x;z]-> y )
         if linear:
@@ -293,12 +287,10 @@ class LTRegressor(LTModel):
 
     def __init__(self, bst_depth, in_size, out_size, pruned=True, linear=True, **kwargs):
 
-        super(LTRegressor, self).__init__()
+        super(LTRegressor, self).__init__(bst_depth, in_size, pruned, **kwargs)
 
         self.params = locals()
         del self.params['self']
-
-        self.set_latent_tree(bst_depth, in_size, pruned, **kwargs)
 
         # init predictor ( [x;z]-> y )
 
