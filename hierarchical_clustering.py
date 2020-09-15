@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 
 from pathlib import Path
 from tqdm import tqdm
@@ -17,13 +18,10 @@ from src.optimization import train_stochastic, evaluate
 from src.datasets import Dataset, TorchDataset
 from src.utils import deterministic 
 
-DATA_NAME = "COVTYPE"
-TREE_DEPTH = 5
-REG = 784.2856895801542
+DATA_NAME = sys.argv[1]
+
 LR = 0.01
 EPOCHS = 100
-
-pruning = REG > 0
 
 if torch.cuda.is_available():
     pin_memory = True
@@ -47,26 +45,40 @@ elif DATA_NAME == "COVTYPE":
     in_features = list(set(range(54)) - set(out_features))
     BATCH_SIZE = 512
     SPLIT = 'linear'
+    TREE_DEPTH = 5
+    REG = 784.2856895801542
 
 elif DATA_NAME == "GLASS":
-    out_features = [7, 8]
+    out_features = [0, 1]
     in_features = list(set(range(9)) - set(out_features))
     BATCH_SIZE = 8
     SPLIT = 'linear'
+    TREE_DEPTH = 6
+    REG = 17.893973029582362
+
+elif DATA_NAME == "DIGITS":
+    out_features = [0, 1]
+    in_features = list(set(range(9)) - set(out_features))
+    BATCH_SIZE = 8
+    SPLIT = 'linear'
+    TREE_DEPTH = 2
+    REG = 0
+    
+pruning = REG > 0
 
 data = Dataset(DATA_NAME, normalize=True, in_features=in_features, out_features=out_features, seed=459107)
 classes = np.unique(data.y_train)
 num_classes = max(classes) + 1
 
 if DATA_NAME == "ALOI":
-    trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE, shuffle=True, num_workers=12, pin_memory=pin_memory)
-    valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
-    testloader = DataLoader(TorchDataset(data.X_test_in, data.X_test_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
+    trainloader = DataLoader(TorchDataset((data.X_train_in, data.X_train_out), means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE, shuffle=True, num_workers=12, pin_memory=pin_memory)
+    valloader = DataLoader(TorchDataset((data.X_valid_in, data.X_valid_out), means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
+    testloader = DataLoader(TorchDataset((data.X_test_in, data.X_test_out), means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
 
 else:
-    trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out), batch_size=BATCH_SIZE, shuffle=True, num_workers=12, pin_memory=pin_memory)
-    valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
-    testloader = DataLoader(TorchDataset(data.X_test_in, data.X_test_out), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
+    trainloader = DataLoader(TorchDataset((data.X_train_in, data.X_train_out)), batch_size=BATCH_SIZE, shuffle=True, num_workers=12, pin_memory=pin_memory)
+    valloader = DataLoader(TorchDataset((data.X_valid_in, data.X_valid_out)), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
+    testloader = DataLoader(TorchDataset((data.X_test_in, data.X_test_out)), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
 
 test_scores= []
 for SEED in [1225, 1337, 2020, 6021991]:
