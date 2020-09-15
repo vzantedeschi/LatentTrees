@@ -30,8 +30,8 @@ print("target mean = %.5f, std = %.5f" % (data.mean_y, data.std_y))
 
 root_dir = Path("./results/optuna/tabular/") / "{}/linear={}/".format(DATA_NAME, LINEAR)
 
-trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, num_workers=12, shuffle=True)
-valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATCH_SIZE*2, num_workers=12, shuffle=False)
+trainloader = DataLoader(TorchDataset((data.X_train, data.y_train)), batch_size=BATCH_SIZE, num_workers=12, shuffle=True)
+valloader = DataLoader(TorchDataset((data.X_valid, data.y_valid)), batch_size=BATCH_SIZE*2, num_workers=12, shuffle=False)
 
 deterministic(SEED)
 
