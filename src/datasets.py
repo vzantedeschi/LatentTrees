@@ -76,7 +76,8 @@ class Dataset:
                 self.std_y = np.std(self.y_train, axis=0, dtype=np.float32)
 
                 # if constants, set std to 1
-                self.std_y[self.std_y == 0.] = 1.
+                if self.std_y == 0.:
+                    self.std_y = 1.
 
                 self.y_train = (self.y_train - self.mean_y) / self.std_y
                 self.y_valid = (self.y_valid - self.mean_y) / self.std_y

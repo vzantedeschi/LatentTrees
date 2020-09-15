@@ -17,9 +17,9 @@ from src.optimization import train_stochastic, evaluate
 from src.datasets import Dataset, TorchDataset
 from src.utils import deterministic 
 
-DATA_NAME = "GLASS"
-TREE_DEPTH = 8
-REG = 498.073
+DATA_NAME = "COVTYPE"
+TREE_DEPTH = 5
+REG = 784.2856895801542
 LR = 0.01
 EPOCHS = 100
 
