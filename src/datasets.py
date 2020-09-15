@@ -16,6 +16,7 @@ REAL_DATASETS = {
     'GLASS': fetch_GLASS,
     'COVTYPE': fetch_COVTYPE,
     'ALOI': fetch_ALOI,
+    'DIGITS': fetch_DIGITS,
 }
 
 TOY_DATASETS = [
@@ -102,20 +103,19 @@ class Dataset:
 
 class TorchDataset(torch.utils.data.Dataset):
 
-    def __init__(self, X, Y, means=None, stds=None, device=None):
+    def __init__(self, data, means=None, stds=None, device=None, transform=None):
         
-        self.x = X
-        self.y = Y
-        self.device = None
-        print(X.shape, Y.shape)
+        self.data = data # a list of sets, e.g. (X, Y)
+        self.device = device
+        self.transform = transform
         
         if means is not None:
             assert stds is not None, "must specify both <means> and <stds>"
 
-            self.normalize = lambda x, y: ((x - means[0]) / stds[0], (y - means[1]) / stds[1])
+            self.normalize = lambda data: [(d - m) / s for d, m, s in zip(data, means, stds)]
 
         else:
-            self.normalize = lambda x, y: (x, y)
+            self.normalize = lambda data: data
 
     def __len__(self):
 
@@ -123,10 +123,12 @@ class TorchDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
 
-        x, y = self.normalize(self.x[idx], self.y[idx])
+        data = self.normalize([s[idx] for s in self.data])
 
         if self.device:
-            return torch.from_numpy(x).to(self.device), torch.from_numpy(y).to(self.device)
+            data = [torch.from_numpy(d).to(self.device) for d in data]
 
-        else:
-            return x, y
+        if self.transform:
+            data = [self.transform(d) for d in data]
+            
+        return x, y

@@ -56,7 +56,7 @@ def train_batch(x, y, LT_model, optimizer, criterion, nb_iter=1e4, reg=10, norm=
 
         monitor.write(LT_model, i, train={"Loss": loss.detach()})
 
-def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm=float("inf"), monitor=None, prog_bar=True):
+def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm=float("inf"), monitor=None, prog_bar=True, contrastive=False):
 
     model.train()
 
@@ -73,14 +73,21 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
 
         optimizer.zero_grad()
 
-        t_x, t_y = batch
+        if contrastive:
+            t_i, t_j = batch
+            z_i, z_j = model(t_i), model(t_j)
+            
+            loss = criterion(z_i, z_j)
 
-        if t_y.dim() > 2: # predictors support only flatten output atm
-            t_y = t_y.view(len(t_y), -1)
+        else:
+            t_x, t_y = batch
 
-        y_pred = model(t_x).squeeze()
-        
-        loss = criterion(y_pred, t_y.float()) / len(t_x)
+            if t_y.dim() > 2: # predictors support only flatten output atm
+                t_y = t_y.view(len(t_y), -1)
+
+            y_pred = model(t_x).squeeze()
+            
+            loss = criterion(y_pred, t_y.float()) / len(t_x)
 
         if reg > 0:
 
@@ -105,7 +112,7 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
         if monitor:
             monitor.write(model, i + last_iter, train={"Loss": loss.detach()})
             
-def evaluate(dataloader, model, criteria, epoch=None, monitor=None):
+def evaluate(dataloader, model, criteria, epoch=None, monitor=None, contrastive=False):
 
     model.eval()
 
@@ -114,18 +121,29 @@ def evaluate(dataloader, model, criteria, epoch=None, monitor=None):
     num_points = 0
     for batch in dataloader:
 
-        t_x, t_y = batch
-        
-        if t_y.dim() > 2: # predictors support only flatten output atm
-            t_y = t_y.view(len(t_y), -1)
-        
-        num_points += len(t_x)
+        if contrastive:
 
-        y_pred = model.predict(t_x).squeeze()
+            t_i, t_j = batch
+            z_i, z_j = model(t_i), model(t_j)
+            num_points += 1
 
-        for k in criteria.keys():
-            loss = criteria[k](y_pred, t_y)
-            total_losses[k] += loss.detach()
+            for k in criteria.keys():
+                loss = criteria[k](z_i, z_j)
+                total_losses[k] += loss.detach()
+
+        else:
+            t_x, t_y = batch
+            
+            if t_y.dim() > 2: # predictors support only flatten output atm
+                t_y = t_y.view(len(t_y), -1)
+            
+            num_points += len(t_x)
+
+            y_pred = model.predict(t_x).squeeze()
+
+            for k in criteria.keys():
+                loss = criteria[k](y_pred, t_y)
+                total_losses[k] += loss.detach()
 
     if monitor:
         monitor.write(model, epoch, val={k: loss / num_points for k, loss in total_losses.items()})
