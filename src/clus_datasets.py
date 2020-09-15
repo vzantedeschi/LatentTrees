@@ -115,3 +115,19 @@ def fetch_ALOI(path, valid_size=0.2, test_size=0.2, seed=None):
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
     )
+
+def fetch_DIGITS(path, valid_size=0.2, test_size=0.2, seed=None):
+
+    from sklearn.datasets import load_digits
+
+    X, Y = load_digits(return_X_y=True)
+    
+    X, Y = X.astype(np.float32), Y.astype(int)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
+
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=seed)
+
+    return dict(
+        X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
+    )
