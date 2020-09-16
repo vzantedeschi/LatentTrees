@@ -29,7 +29,9 @@ COMP = 'none'
 TEMP = 1
 PROJ_DIM = 64
 DROPOUT = 0.
-    
+REG = 0.
+TREE_DEPTH = 2
+
 pruning = REG > 0
 
 if torch.cuda.is_available():
@@ -45,12 +47,11 @@ print("Training on", device)
 data = Dataset(DATA_NAME, normalize=True, seed=459107)
 classes = np.unique(data.y_train)
 num_classes = max(classes) + 1
-in_size = data.X_train.shape[1:]
+in_size = data.X_train.shape[2:]
+transform = TransformsSimCLR(in_size, data.mean, data.std)
 
-transform = TransformsSimCLR(in_size)
-
-trainloader = DataLoader(TorchDataset((data.X_train), means=(data.mean), stds=(data.std), transform=transform), batch_size=BATCH_SIZE, shuffle=True, num_workers=12, pin_memory=pin_memory)
-valloader = DataLoader(TorchDataset((data.X_valid), means=(data.mean), stds=(data.std), transform=transform), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
+trainloader = DataLoader(TorchDataset(data.X_train, transform=transform), batch_size=BATCH_SIZE, shuffle=True, num_workers=6, pin_memory=pin_memory)
+valloader = DataLoader(TorchDataset(data.X_valid, transform=transform), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=6, pin_memory=pin_memory)
 
 test_scores= []
 for SEED in [1225, 1337, 2020, 6021991]:
@@ -60,7 +61,7 @@ for SEED in [1225, 1337, 2020, 6021991]:
     save_dir = Path("./results/constrastive/") / DATA_NAME / "temperature={}/proj-dim={}/depth={}/reg={}/seed={}".format(TEMP, PROJ_DIM, TREE_DEPTH, REG, SEED)
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    model = LTRegressor(TREE_DEPTH, in_size, PROJ_DIM, pruned=pruning, linear=False, split_func=SPLIT, dropout=DROPOUT, COMP_FUNC=COMP)
+    model = LTRegressor(TREE_DEPTH, [3] + list(in_size), PROJ_DIM, pruned=pruning, linear=False, split_func=SPLIT, dropout=DROPOUT, COMP_FUNC=COMP)
 
     print(model.count_parameters(), "model's parameters")
     # init optimizer
@@ -88,9 +89,9 @@ for SEED in [1225, 1337, 2020, 6021991]:
     best_e = -1
     no_improv = 0
     for e in range(EPOCHS):
-        train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
+        train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor, contrastive=True)
 
-        val_loss = evaluate(valloader, model, {'NT_XENT': criterion}, epoch=e, monitor=monitor)
+        val_loss = evaluate(valloader, model, {'NT_XENT': criterion}, epoch=e, monitor=monitor, contrastive=True)
 
         print("Epoch %i: validation NT_XENT = %f\n" % (e, val_loss['NT_XENT']))
 

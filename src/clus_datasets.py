@@ -121,8 +121,7 @@ def fetch_DIGITS(path, valid_size=0.2, test_size=0.2, seed=None):
     from sklearn.datasets import load_digits
 
     X, Y = load_digits(return_X_y=True)
-    
-    X, Y = X.astype(np.float32), Y.astype(int)
+    X, Y = X.reshape(-1, 1, 8, 8).astype(np.uint8), Y.astype(int)
 
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
 

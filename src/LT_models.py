@@ -101,7 +101,7 @@ class LatentTree(torch.nn.Module):
         elif split_func == 'conv':
             
             self.in_size = dim[0]
-
+            print(dim)
             self.split = torch.nn.Sequential(
                     torch.nn.Conv2d(self.in_size, 16, 3, stride=2),
                     torch.nn.Conv2d(16, 32, 3, stride=2),

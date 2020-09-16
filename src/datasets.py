@@ -54,18 +54,14 @@ class Dataset:
             if normalize:
 
                 print("Normalize dataset")
-                if self.X_train.ndim == 2:
-                    self.mean = np.mean(self.X_train, axis=0, dtype=np.float32)
-                    self.std = np.std(self.X_train, axis=0, dtype=np.float32)
-
-                else:
-                    self.mean = np.mean(self.X_train, axis=(0, 2, 3), dtype=np.float32)
-                    self.std = np.std(self.X_train, axis=(0, 2, 3), dtype=np.float32)
+                axis = [0] + [i + 2 for i in range(self.X_train.ndim - 2)]
+                self.mean = np.mean(self.X_train, axis=tuple(axis), dtype=np.float32)
+                self.std = np.std(self.X_train, axis=tuple(axis), dtype=np.float32)
 
                 # if constants, set std to 1
                 self.std[self.std == 0.] = 1.
 
-                if dataset != 'ALOI':
+                if dataset not in ['ALOI', 'DIGITS']:
                     self.X_train = (self.X_train - self.mean) / self.std
                     self.X_valid = (self.X_valid - self.mean) / self.std
                     self.X_test = (self.X_test - self.mean) / self.std
@@ -103,12 +99,21 @@ class Dataset:
 
 class TorchDataset(torch.utils.data.Dataset):
 
-    def __init__(self, data, means=None, stds=None, device=None, transform=None):
+    def __init__(self, *data, **options):
         
-        self.data = data # a list of sets, e.g. (X, Y)
-        self.device = device
-        self.transform = transform
+        n_data = len(data)
+        if n_data == 0:
+            raise ValueError("At least one set required as input")
         
+        self.data = data
+        means = options.pop('means', None)
+        stds = options.pop('stds', None)
+        self.device = options.pop('device', None)
+        self.transform = options.pop('transform', None)
+
+        if options:
+            raise TypeError("Invalid parameters passed: %s" % str(options))
+         
         if means is not None:
             assert stds is not None, "must specify both <means> and <stds>"
 
@@ -119,16 +124,15 @@ class TorchDataset(torch.utils.data.Dataset):
 
     def __len__(self):
 
-        return len(self.x)
+        return len(self.data[0])
 
     def __getitem__(self, idx):
 
         data = self.normalize([s[idx] for s in self.data])
-
         if self.device:
             data = [torch.from_numpy(d).to(self.device) for d in data]
 
         if self.transform:
-            data = [self.transform(d) for d in data]
+            data = sum([self.transform(d) for d in data], [])
             
-        return x, y
+        return data
