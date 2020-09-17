@@ -6,45 +6,29 @@ import networkx as nx
 from networkx.drawing.nx_agraph import graphviz_layout
 import matplotlib.pyplot as plt
 
-from src.datasets import Dataset
+from src.datasets import Dataset, TorchDataset
 from src.metrics import LT_dendrogram_purity
 from src.LT_models import LTBinaryClassifier, LTClassifier
 from src.optimization import evaluate
-from src.utils import TorchDataset
 
 # LOAD_DIR = "./results/tab-datasets/HIGGS/depth=5/reg=0/seed=1337/"
 # LOAD_DIR = "./results/clustering/GLASS/depth=4/reg=0/seed=1337/"
-LOAD_DIR = "./results/clustering-selfsup/GLASS/out-feats=[0, 1]/depth=6/reg=17.893973029582362/"
+LOAD_DIR = "results/tabular/CLICK/depth=3/reg=596.9305372187174/mlp-layers=2/dropout=0.0043705947219156065/seed=1225/"
 
-if 'xor' in LOAD_DIR:
+additional_load = {'checkpoint': None}
+model = LTBinaryClassifier.load_model(LOAD_DIR, additional_load)
+checkpoint = additional_load['checkpoint']
 
-    model = LTBinaryClassifier.load_model(LOAD_DIR)
+DATA_NAME = checkpoint['dataset']
+SEED = checkpoint['seed']
 
-    SEED = 1225
-    np.random.seed(SEED)
-    NB_CLASSES = 2
+MAX_DEPTH = 3
+leaves = range(2**MAX_DEPTH - 1, 2**(MAX_DEPTH+1) - 1)
 
-    # generate toy dataset
-    X, Y = toy_dataset(100, 'xor')
+data = Dataset(DATA_NAME, seed=459107, normalize=True)
 
-else:
-    DATA_NAME = LOAD_DIR.split('/')[-5]
-    SEED = int(LOAD_DIR.split('/')[-2][5:])
-
-    data = Dataset(DATA_NAME, random_state=SEED, normalize=True)
-
-    X, Y = data.X_test, data.y_test
-    NB_CLASSES = max(Y) + 1
-
-    if NB_CLASSES == 2:
-        model = LTBinaryClassifier.load_model(LOAD_DIR)
-    else:
-        model = LTClassifier.load_model(LOAD_DIR)
-
-    testloader = DataLoader(TorchDataset(X, Y), batch_size=1024, shuffle=False)
-
-    test_loss = evaluate(testloader, model, lambda x, y: (x != y).sum())
-    print(f"test error rate: {test_loss}\n")
+X, Y = data.X_test, data.y_test
+NB_CLASSES = max(Y) + 1
 
 score, class_hist = LT_dendrogram_purity(X, Y, model, model.latent_tree.bst, NB_CLASSES)
 
