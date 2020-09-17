@@ -101,18 +101,30 @@ class LatentTree(torch.nn.Module):
         elif split_func == 'conv':
             
             self.in_size = dim[0]
-            print(dim)
-            self.split = torch.nn.Sequential(
-                    torch.nn.Conv2d(self.in_size, 16, 3, stride=2),
-                    torch.nn.Conv2d(16, 32, 3, stride=2),
-                    torch.nn.ELU(),
-                    torch.nn.Conv2d(32, 16, 3, stride=2),
-                    torch.nn.Conv2d(16, 8, 3, stride=2),
-                    torch.nn.ELU(),
-                    torch.nn.Conv2d(8, self.bst.nb_split, 4, stride=4),
-                    torch.nn.MaxPool2d(2),
-                    torch.nn.Flatten(),
-                )
+            
+            if dim == (3, 144, 192):
+                self.split = torch.nn.Sequential(
+                        torch.nn.BatchNorm2d(self.in_size),
+                        torch.nn.Conv2d(self.in_size, 16, 3, stride=2),
+                        torch.nn.Conv2d(16, 32, 3, stride=2),
+                        torch.nn.ELU(),
+                        torch.nn.Conv2d(32, 16, 3, stride=2),
+                        torch.nn.Conv2d(16, 8, 3, stride=2),
+                        torch.nn.ELU(),
+                        torch.nn.Conv2d(8, self.bst.nb_split, 4, stride=4),
+                        torch.nn.MaxPool2d(2),
+                        torch.nn.Flatten(),
+                    )
+            else:
+                self.split = torch.nn.Sequential(
+                        torch.nn.BatchNorm2d(self.in_size),
+                        torch.nn.Conv2d(self.in_size, 8, 3),
+                        torch.nn.Conv2d(8, 16, 3),
+                        torch.nn.ELU(),
+                        torch.nn.Conv2d(16, self.bst.nb_split, 3),
+                        torch.nn.MaxPool2d(2),
+                        torch.nn.Flatten(),
+                    )
 
         else:
             raise NotImplementedError
@@ -147,7 +159,7 @@ class LatentTree(torch.nn.Module):
 
         # compute tree paths q
         XA = self.split(x)
-        q = torch.ones((len(x), self.bst.nb_nodes))
+        q = torch.ones((len(x), self.bst.nb_nodes), device=x.device)
 
         # upper bound children's q to parent's q        
         # trick to avoid inplace operations involving A

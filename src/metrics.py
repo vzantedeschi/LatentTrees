@@ -8,7 +8,7 @@ def class_purity(dataset, true_y, model, bst, nb_classes):
 
     if isinstance(dataset, np.ndarray):
         
-        zs, labels = model.predict_bst(torch.from_numpy(dataset))
+        zs, labels = model.predict_bst(torch.from_numpy(dataset).float())
     
     else:
 

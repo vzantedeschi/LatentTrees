@@ -108,7 +108,6 @@ class TorchDataset(torch.utils.data.Dataset):
         self.data = data
         means = options.pop('means', None)
         stds = options.pop('stds', None)
-        self.device = options.pop('device', None)
         self.transform = options.pop('transform', None)
 
         if options:
@@ -129,8 +128,6 @@ class TorchDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
 
         data = self.normalize([s[idx] for s in self.data])
-        if self.device:
-            data = [torch.from_numpy(d).to(self.device) for d in data]
 
         if self.transform:
             data = sum([self.transform(d) for d in data], [])

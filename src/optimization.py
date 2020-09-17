@@ -56,7 +56,7 @@ def train_batch(x, y, LT_model, optimizer, criterion, nb_iter=1e4, reg=10, norm=
 
         monitor.write(LT_model, i, train={"Loss": loss.detach()})
 
-def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm=float("inf"), monitor=None, prog_bar=True, contrastive=False):
+def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm=float("inf"), monitor=None, prog_bar=True, contrastive=False, device=None):
 
     model.train()
 
@@ -75,12 +75,21 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
 
         if contrastive:
             t_i, t_j = batch
+
+            if device:
+                t_i = t_i.to(device)
+                t_j = t_j.to(device)
+
             z_i, z_j = model(t_i), model(t_j)
             
             loss = criterion(z_i, z_j)
 
         else:
             t_x, t_y = batch
+
+            if device:
+                t_x = t_x.to(device)
+                t_x = t_y.to(device)
 
             if t_y.dim() > 2: # predictors support only flatten output atm
                 t_y = t_y.view(len(t_y), -1)
@@ -92,7 +101,7 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
         if reg > 0:
 
             obj = loss + reg * model.latent_tree.bst.nb_nodes * torch.norm(model.latent_tree.eta, p=norm)
-            train_obj += obj.detach().numpy()
+            train_obj += obj.detach().cpu().numpy()
 
             if prog_bar:
                 pbar.set_description("avg train loss + reg %f" % (train_obj / (i + 1)))
@@ -100,7 +109,7 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
         else:
 
             obj = loss
-            train_obj += obj.detach().numpy()
+            train_obj += obj.detach().cpu().numpy()
 
             if prog_bar:
                 pbar.set_description("avg train loss %f" % (train_obj / (i + 1)))
@@ -112,7 +121,7 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
         if monitor:
             monitor.write(model, i + last_iter, train={"Loss": loss.detach()})
             
-def evaluate(dataloader, model, criteria, epoch=None, monitor=None, contrastive=False):
+def evaluate(dataloader, model, criteria, epoch=None, monitor=None, contrastive=False, device=None):
 
     model.eval()
 
@@ -124,6 +133,11 @@ def evaluate(dataloader, model, criteria, epoch=None, monitor=None, contrastive=
         if contrastive:
 
             t_i, t_j = batch
+            
+            if device:
+                t_i = t_i.to(device)
+                t_j = t_j.to(device)
+            
             z_i, z_j = model(t_i), model(t_j)
             num_points += 1
 
@@ -133,6 +147,10 @@ def evaluate(dataloader, model, criteria, epoch=None, monitor=None, contrastive=
 
         else:
             t_x, t_y = batch
+            
+            if device:
+                t_x = t_x.to(device)
+                t_y = t_j.to(device)
             
             if t_y.dim() > 2: # predictors support only flatten output atm
                 t_y = t_y.view(len(t_y), -1)
@@ -148,4 +166,5 @@ def evaluate(dataloader, model, criteria, epoch=None, monitor=None, contrastive=
     if monitor:
         monitor.write(model, epoch, val={k: loss / num_points for k, loss in total_losses.items()})
 
-    return {k: loss.numpy() / num_points for k, loss in total_losses.items()}
+    return {k: loss.cpu().numpy() / num_points for k, loss in total_losses.items()}
+
