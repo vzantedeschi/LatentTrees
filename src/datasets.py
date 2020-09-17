@@ -104,6 +104,8 @@ class TorchDataset(torch.utils.data.Dataset):
         n_data = len(data)
         if n_data == 0:
             raise ValueError("At least one set required as input")
+
+        print(data[0].shape)
         
         self.data = data
         means = options.pop('means', None)
