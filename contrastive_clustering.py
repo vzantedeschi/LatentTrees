@@ -5,10 +5,11 @@ from pathlib import Path
 from tqdm import tqdm
 
 import torch
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim import SGD
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
 
-from qhoptim.pyt import QHAdam
+from torchlars import LARS
 
 from src.datasets import Dataset, TorchDataset
 from src.LT_models import LTRegressor
@@ -21,17 +22,22 @@ from src.utils import deterministic
 
 DATA_NAME = sys.argv[1]
 
-LR = 0.001
+if DATA_NAME == "ALOI":
+    BATCH_SIZE = 612
+else:
+    BATCH_SIZE = 64
+
 EPOCHS = 100
-BATCH_SIZE = 256
 SPLIT = 'conv'
 COMP = 'none'
-TEMP = 1
+TEMP = 0.5
 PROJ_DIM = 64
 DROPOUT = 0.
 REG = 0.
-TREE_DEPTH = 6
+TREE_DEPTH = 10
 
+LR = 0.01
+WD = 1e-6
 pruning = REG > 0
 
 if torch.cuda.is_available():
@@ -44,7 +50,7 @@ else:
 
 print("Training on", device)
 
-data = Dataset(DATA_NAME, normalize=True, seed=459107)
+data = Dataset(DATA_NAME, seed=459107)
 classes = np.unique(data.y_train)
 num_classes = max(classes) + 1
 in_size = data.X_train.shape[1:]
@@ -54,7 +60,7 @@ trainloader = DataLoader(TorchDataset(data.X_train, transform=transform), batch_
 valloader = DataLoader(TorchDataset(data.X_valid, transform=transform), batch_size=BATCH_SIZE, shuffle=False, num_workers=6, pin_memory=pin_memory, drop_last=True)
 
 test_scores= []
-for SEED in [1225, 1337, 2020, 6021991]:
+for SEED in [1225]:
 
     deterministic(SEED)
 
@@ -66,10 +72,11 @@ for SEED in [1225, 1337, 2020, 6021991]:
 
     print(model.count_parameters(), "model's parameters")
     # init optimizer
-    optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.998))
-
-    # init learning rate scheduler
-    lr_scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)
+    optimizer = LARS(SGD(model.parameters(), lr=LR, weight_decay=WD))
+    
+    # init learning rate schedulers
+    lmbda = lambda epoch: 2
+    lr_scheduler = CosineAnnealingLR(optimizer, T_max=len(trainloader), eta_min=1e-8)
 
     # init loss
     criterion = NT_Xent(BATCH_SIZE, TEMP)
@@ -103,8 +110,8 @@ for SEED in [1225, 1337, 2020, 6021991]:
             LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_NT_XENT=val_loss['NT_XENT'])
             no_improv = 0
 
-        # reduce learning rate if needed
-        lr_scheduler.step(val_loss['NT_XENT'])
+        lr_scheduler.step()
+
         monitor.write(model, e, train={"lr": optimizer.param_groups[0]['lr']})
 
         if no_improv == EPOCHS // 5:
