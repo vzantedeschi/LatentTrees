@@ -2,6 +2,8 @@
 
 ### Dependencies
 
+Install PyTorch, following the [guidelines](https://pytorch.org/get-started/locally/).
+
 On Ubuntu16.04+, make sure you have GLIBCXX_3.4.22 support via libstdc++.so.6:
 
 ```bash

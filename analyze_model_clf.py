@@ -6,15 +6,15 @@ import networkx as nx
 from networkx.drawing.nx_agraph import graphviz_layout
 import matplotlib.pyplot as plt
 
-from src.datasets import toy_dataset
+from src.datasets import Dataset
 from src.metrics import LT_dendrogram_purity
-from src.tabular_datasets import Dataset
 from src.LT_models import LTBinaryClassifier, LTClassifier
 from src.optimization import evaluate
 from src.utils import TorchDataset
 
 # LOAD_DIR = "./results/tab-datasets/HIGGS/depth=5/reg=0/seed=1337/"
-LOAD_DIR = "./results/clustering/GLASS/depth=4/reg=0/seed=1337/"
+# LOAD_DIR = "./results/clustering/GLASS/depth=4/reg=0/seed=1337/"
+LOAD_DIR = "./results/clustering-selfsup/GLASS/out-feats=[0, 1]/depth=6/reg=17.893973029582362/"
 
 if 'xor' in LOAD_DIR:
 
