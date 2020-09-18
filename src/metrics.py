@@ -47,20 +47,17 @@ def dendrogram_purity(bst, pred_y, true_y, purity, nb_classes):
     
     num_pairs = 0
     score = 0
-        
+    
+    c_point_leaves = {c: leaves[true_y == c] for c in range(nb_classes)}
+    c_pairs = np.stack([np.array([sum(c_point_leaves[c] == n) for n in bst.leaves]) for c in range(nb_classes)])
+
     # loop over all possible combinations of outcomes
     for n1, n2 in itertools.product(bst.leaves, bst.leaves):
 
         a = bst.find_LCA(n1, n2)
 
-        # loop over classes
-        for c in range(nb_classes):
-
-            c_point_leaves = leaves[true_y == c]
-            c_pairs = sum(c_point_leaves == n1) * sum(c_point_leaves == n2)
-            
-            num_pairs += c_pairs
-            score += purity[c, a] * c_pairs
+        num_pairs += sum(c_pairs[:, n1 - bst.nb_split] * c_pairs[:, n2 - bst.nb_split])
+        score += sum(purity[:, a] * c_pairs[:, n1 - bst.nb_split] * c_pairs[:, n2 - bst.nb_split])
 
     return score / num_pairs
 
@@ -114,7 +111,7 @@ if __name__ == "__main__":
     # highest score when all points are assigned to the same leaf
     purity = np.array([[1] * bst1.nb_nodes])
     assert dendrogram_purity(bst1, Y, Y, purity, NB_CLASSES) == 1.0
-    assert dendrogram_purity(bst1, Y+1, Y, purity, NB_CLASSES) == 1.0  
+    assert dendrogram_purity(bst1, Y+1, Y, purity, NB_CLASSES) == 1.0 
 
     # lowest score when purity is null
     purity = np.array([[0] * bst1.nb_nodes])
@@ -140,3 +137,19 @@ if __name__ == "__main__":
     purity = np.array([[0.5, 1, 0, 1, 1]  + [0] * (bst2.nb_nodes - 5)])
 
     assert isclose(dendrogram_purity(bst2, pred_y, Y, purity, NB_CLASSES), (4 * 1 + 0.5 * 8) / num_pairs), (dendrogram_purity(bst2, pred_y, Y, purity, NB_CLASSES), (4 * 1 + 0.5 * 8) / num_pairs)
+
+    import time
+
+    NB_CLASSES = 10
+    NB_POINTS = 1000
+
+    Y = np.array([0] * NB_POINTS)
+
+    bst3 = BinarySearchTree(10)
+    purity = np.zeros((NB_CLASSES, bst3.nb_nodes))
+
+    t1 = time.time()
+    dendrogram_purity(bst3, Y+1, Y, purity, NB_CLASSES)
+    t2 = time.time()
+
+    print(f"python: {t2-t1}s")
