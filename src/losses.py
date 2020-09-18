@@ -25,15 +25,13 @@ class GatherLayer(torch.autograd.Function):
 
 class NT_Xent(nn.Module):
 
-    def __init__(self, batch_size, temperature, world_size=1):
+    def __init__(self, temperature, world_size=1):
 
         super(NT_Xent, self).__init__()
 
-        self.batch_size = batch_size
         self.temperature = temperature
         self.world_size = world_size # number of parellel processes
 
-        self.mask = self.negative_mask(batch_size, world_size)
         self.criterion = nn.CrossEntropyLoss(reduction="sum")
         self.sim_func = nn.CosineSimilarity(dim=2)
 
@@ -49,12 +47,12 @@ class NT_Xent(nn.Module):
 
         return mask
 
-    def forward(self, z_i, z_j):
+    def forward(self, z_i, z_j, batch_size):
         """
         We do not sample negative examples explicitly.
         Instead, given a positive pair, similar to (Chen et al., 2017), we treat the other 2(N − 1) augmented examples within a minibatch as negative examples.
         """
-        N = 2 * self.batch_size * self.world_size
+        N = 2 * batch_size * self.world_size
 
         z = torch.cat((z_i, z_j), dim=0)
         if self.world_size > 1:
@@ -62,13 +60,14 @@ class NT_Xent(nn.Module):
 
         sim = self.sim_func(z.unsqueeze(1), z.unsqueeze(0)) / self.temperature
 
-        sim_i_j = torch.diag(sim, self.batch_size * self.world_size)
-        sim_j_i = torch.diag(sim, -self.batch_size * self.world_size)
+        sim_i_j = torch.diag(sim, batch_size * self.world_size)
+        sim_j_i = torch.diag(sim, -batch_size * self.world_size)
 
         # We have 2N samples, but with Distributed training every GPU gets N examples too, resulting in: 2xNxN
         positive_samples = torch.cat((sim_i_j, sim_j_i), dim=0).reshape(N, 1)
 
-        negative_samples = sim[self.mask].reshape(N, -1) # matrix of size (N, N - 2)
+        mask = self.negative_mask(batch_size, self.world_size)
+        negative_samples = sim[mask].reshape(N, -1) # matrix of size (N, N - 2)
 
         labels = torch.zeros(N).to(positive_samples.device).long()
         logits = torch.cat((positive_samples, negative_samples), dim=1)

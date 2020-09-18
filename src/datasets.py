@@ -105,12 +105,11 @@ class TorchDataset(torch.utils.data.Dataset):
         if n_data == 0:
             raise ValueError("At least one set required as input")
 
-        print(data[0].shape)
-        
         self.data = data
         means = options.pop('means', None)
         stds = options.pop('stds', None)
         self.transform = options.pop('transform', None)
+        self.test = options.pop('test', False)
 
         if options:
             raise TypeError("Invalid parameters passed: %s" % str(options))
@@ -132,6 +131,10 @@ class TorchDataset(torch.utils.data.Dataset):
         data = self.normalize([s[idx] for s in self.data])
 
         if self.transform:
-            data = sum([self.transform(d) for d in data], [])
+
+            if self.test:
+                data = sum([[self.transform.test_transform(d)] * 2 for d in data], [])
+            else:
+                data = sum([self.transform(d) for d in data], [])
             
         return data

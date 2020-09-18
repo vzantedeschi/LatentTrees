@@ -6,8 +6,8 @@ from tqdm import tqdm
 
 import torch
 from torch.optim import SGD
-from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.utils.data import DataLoader
+from torch.optim.lr_scheduler import CosineAnnealingLR, MultiplicativeLR
+from torch.utils.data import DataLoader, RandomSampler
 
 from torchlars import LARS
 
@@ -23,20 +23,23 @@ from src.utils import deterministic
 DATA_NAME = sys.argv[1]
 
 if DATA_NAME == "ALOI":
-    BATCH_SIZE = 612
+    PROJ_DIM = 32
+    TREE_DEPTH = 6
 else:
-    BATCH_SIZE = 64
+    PROJ_DIM = 8
+    TREE_DEPTH = 4
 
+BATCH_SIZE = 1024
 EPOCHS = 100
 SPLIT = 'conv'
 COMP = 'none'
 TEMP = 0.5
-PROJ_DIM = 64
 DROPOUT = 0.
 REG = 0.
-TREE_DEPTH = 10
 
-LR = 0.01
+LR = 0.6 * BATCH_SIZE / 256
+WU_LR = LR / 4 ** 5
+
 WD = 1e-6
 pruning = REG > 0
 
@@ -56,8 +59,12 @@ num_classes = max(classes) + 1
 in_size = data.X_train.shape[1:]
 transform = TransformsSimCLR(in_size)
 
-trainloader = DataLoader(TorchDataset(data.X_train, transform=transform), batch_size=BATCH_SIZE, shuffle=True, num_workers=6, pin_memory=pin_memory, drop_last=True)
-valloader = DataLoader(TorchDataset(data.X_valid, transform=transform), batch_size=BATCH_SIZE, shuffle=False, num_workers=6, pin_memory=pin_memory, drop_last=True)
+train_dataset = TorchDataset(data.X_train, transform=transform)
+# to augment dataset
+train_sampler = RandomSampler(train_dataset, replacement=True, num_samples=100*BATCH_SIZE)
+
+trainloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=BATCH_SIZE, num_workers=6, pin_memory=pin_memory)
+valloader = DataLoader(TorchDataset(data.X_valid, transform=transform, test=True), batch_size=BATCH_SIZE, num_workers=6, pin_memory=pin_memory)
 
 test_scores= []
 for SEED in [1225]:
@@ -72,14 +79,15 @@ for SEED in [1225]:
 
     print(model.count_parameters(), "model's parameters")
     # init optimizer
-    optimizer = LARS(SGD(model.parameters(), lr=LR, weight_decay=WD))
+    optimizer = LARS(SGD(model.parameters(), lr=WU_LR, weight_decay=WD))
     
     # init learning rate schedulers
-    lmbda = lambda epoch: 2
-    lr_scheduler = CosineAnnealingLR(optimizer, T_max=len(trainloader), eta_min=1e-8)
+    lmbda = lambda epoch: 4
+    wu_scheduler = MultiplicativeLR(optimizer, lr_lambda=lmbda)
+    lr_scheduler = CosineAnnealingLR(optimizer, T_max=len(trainloader), eta_min=1e-8, last_epoch=9)
 
     # init loss
-    criterion = NT_Xent(BATCH_SIZE, TEMP)
+    criterion = NT_Xent(TEMP)
 
     # init train-eval monitoring 
     monitor = MonitorTree(pruning, save_dir)
@@ -100,20 +108,29 @@ for SEED in [1225]:
         train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor, contrastive=True, device=device)
 
         val_loss = evaluate(valloader, model, {'NT_XENT': criterion}, epoch=e, monitor=monitor, contrastive=True, device=device)
-
         print("Epoch %i: validation NT_XENT = %f\n" % (e, val_loss['NT_XENT']))
+
+        model.cpu()
+        val_score, hist = LT_dendrogram_purity(data.X_valid, data.y_valid, model, model.latent_tree.bst, num_classes)
+        print("Epoch %i: validation purity = %f" % (e, val_score))
+        model.to(device)
 
         no_improv += 1
         if val_loss['NT_XENT'] <= best_val_loss:
             best_val_loss = val_loss['NT_XENT']
             best_e = e
-            LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_NT_XENT=val_loss['NT_XENT'])
+            LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_NT_XENT=val_loss['NT_XENT'], val_dp=val_score)
             no_improv = 0
-
-        lr_scheduler.step()
+        
+        if e < 5:
+            wu_scheduler.step()
+        else:
+            lr_scheduler.step()
 
         monitor.write(model, e, train={"lr": optimizer.param_groups[0]['lr']})
+        monitor.write(model, e, val={"dp": val_score})
 
+        del val_score, hist
         if no_improv == EPOCHS // 5:
             break
 

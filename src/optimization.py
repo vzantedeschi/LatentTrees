@@ -82,7 +82,7 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
 
             z_i, z_j = model(t_i), model(t_j)
             
-            loss = criterion(z_i, z_j)
+            loss = criterion(z_i, z_j, len(t_i))
 
         else:
             t_x, t_y = batch
@@ -142,7 +142,7 @@ def evaluate(dataloader, model, criteria, epoch=None, monitor=None, contrastive=
             num_points += 1
 
             for k in criteria.keys():
-                loss = criteria[k](z_i, z_j)
+                loss = criteria[k](z_i, z_j, len(t_i))
                 total_losses[k] += loss.detach()
 
         else:

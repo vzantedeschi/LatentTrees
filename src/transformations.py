@@ -16,32 +16,34 @@ class TransformsSimCLR:
         )
 
         trans_list = [
-                        torchvision.transforms.ToPILImage(),
-                        torchvision.transforms.RandomResizedCrop(size=size[1:]),
-                        torchvision.transforms.RandomHorizontalFlip(),  # with 0.5 probability
-                        torchvision.transforms.RandomApply([color_jitter], p=0.8),
-                    ]
+            torchvision.transforms.ToPILImage(),
+            torchvision.transforms.RandomResizedCrop(size=size[1:]),
+            torchvision.transforms.RandomHorizontalFlip(),  # with 0.5 probability
+            torchvision.transforms.RandomApply([color_jitter], p=0.8),
+        ]
+
+        test_trans_list = [
+            torchvision.transforms.ToPILImage(),
+            torchvision.transforms.Resize(size=size[1:]),
+        ]
 
         if size[0] == 1:
             trans_list.extend([
-                        torchvision.transforms.Grayscale(num_output_channels=1),
-                        torchvision.transforms.ToTensor(),
-                    ])
+                torchvision.transforms.Grayscale(num_output_channels=1),
+            ])
+
+            test_trans_list.extend([
+                torchvision.transforms.Grayscale(num_output_channels=1),
+            ])
+
         else:
             trans_list.extend([
-                        torchvision.transforms.RandomGrayscale(p=0.2),
-                        torchvision.transforms.ToTensor(),
-                    ])
+                torchvision.transforms.RandomGrayscale(p=0.2),
+            ])
 
-        self.train_transform = torchvision.transforms.Compose(trans_list)
+        self.train_transform = torchvision.transforms.Compose((*trans_list, torchvision.transforms.ToTensor()))
 
-        self.test_transform = torchvision.transforms.Compose(
-            [
-                torchvision.transforms.ToPILImage(),
-                torchvision.transforms.Resize(size=size[1:]),
-                torchvision.transforms.ToTensor(),
-            ]
-        )
+        self.test_transform = torchvision.transforms.Compose((*test_trans_list, torchvision.transforms.ToTensor()))
 
     def __call__(self, x):
         return [self.train_transform(x), self.train_transform(x)]
