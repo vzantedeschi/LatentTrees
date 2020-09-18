@@ -8,15 +8,15 @@ import matplotlib.pyplot as plt
 
 from src.datasets import Dataset, TorchDataset
 from src.metrics import LT_dendrogram_purity
-from src.LT_models import LTBinaryClassifier, LTClassifier
+from src.LT_models import LTBinaryClassifier, LTClassifier, LTRegressor
 from src.optimization import evaluate
 
 # LOAD_DIR = "./results/tab-datasets/HIGGS/depth=5/reg=0/seed=1337/"
 # LOAD_DIR = "./results/clustering/GLASS/depth=4/reg=0/seed=1337/"
-LOAD_DIR = "results/tabular/CLICK/depth=3/reg=596.9305372187174/mlp-layers=2/dropout=0.0043705947219156065/seed=1225/"
+LOAD_DIR = "results/contrastive/DIGITS/temperature=0.5/proj-dim=64/depth=10/reg=0.0/seed=1225/"
 
 additional_load = {'checkpoint': None}
-model = LTBinaryClassifier.load_model(LOAD_DIR, additional_load)
+model = LTRegressor.load_model(LOAD_DIR, additional_load)
 checkpoint = additional_load['checkpoint']
 
 DATA_NAME = checkpoint['dataset']

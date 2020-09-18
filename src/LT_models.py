@@ -283,7 +283,7 @@ class LTModel(torch.nn.Module):
     @classmethod
     def load_model(cls, load_dir, add_load=None):
         
-        checkpoint = torch.load(Path(load_dir) / 'model.t7')
+        checkpoint = torch.load(Path(load_dir) / 'model.t7', map_location=torch.device('cpu'))
         
         model = cls(**checkpoint, **checkpoint['kwargs'])
         model.load_state_dict(checkpoint['model_state_dict'])

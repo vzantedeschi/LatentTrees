@@ -33,11 +33,11 @@ class NT_Xent(nn.Module):
         self.temperature = temperature
         self.world_size = world_size # number of parellel processes
 
-        self.mask = self.mask_out_correlated_samples(batch_size, world_size)
+        self.mask = self.negative_mask(batch_size, world_size)
         self.criterion = nn.CrossEntropyLoss(reduction="sum")
         self.sim_func = nn.CosineSimilarity(dim=2)
 
-    def mask_out_correlated_samples(self, batch_size, world_size):
+    def negative_mask(self, batch_size, world_size):
 
         N = 2 * batch_size * world_size
         mask = torch.ones((N, N), dtype=bool)
@@ -68,7 +68,7 @@ class NT_Xent(nn.Module):
         # We have 2N samples, but with Distributed training every GPU gets N examples too, resulting in: 2xNxN
         positive_samples = torch.cat((sim_i_j, sim_j_i), dim=0).reshape(N, 1)
 
-        negative_samples = sim[self.mask].reshape(N, -1)
+        negative_samples = sim[self.mask].reshape(N, -1) # matrix of size (N, N - 2)
 
         labels = torch.zeros(N).to(positive_samples.device).long()
         logits = torch.cat((positive_samples, negative_samples), dim=1)
