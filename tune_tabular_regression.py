@@ -17,7 +17,7 @@ from src.datasets import Dataset, TorchDataset
 from src.utils import deterministic
 
 SEED = 1225
-DATA_NAME = "MICROSOFT"
+DATA_NAME = "YEAR"
 LR = 0.01
 BATCH_SIZE = 512 
 EPOCHS = 100
@@ -28,7 +28,7 @@ in_features = data.X_train.shape[1]
 out_features = 1
 print("target mean = %.5f, std = %.5f" % (data.mean_y, data.std_y))
 
-root_dir = Path("./results/optuna/tabular/") / "{}/linear={}/".format(DATA_NAME, LINEAR)
+root_dir = Path("./results/optuna/tabular/interpretable/") / "{}/linear={}/".format(DATA_NAME, LINEAR)
 
 trainloader = DataLoader(TorchDataset((data.X_train, data.y_train)), batch_size=BATCH_SIZE, num_workers=12, shuffle=True)
 valloader = DataLoader(TorchDataset((data.X_valid, data.y_valid)), batch_size=BATCH_SIZE*2, num_workers=12, shuffle=False)
@@ -43,11 +43,8 @@ def objective(trial):
     DROPOUT = trial.suggest_uniform('DROPOUT', 0.0, 0.5)
     SPLIT_FUNC = trial.suggest_categorical("SPLIT_FUNC", ["linear", "elu"])
 
-    COMP_FUNC = trial.suggest_categorical('COMP_FUNC', ["none", "concatenate"])
-    if COMP_FUNC == "concatenate":
-        TWO_PHASED = trial.suggest_categorical("TWO_PHASED", [True, False])
-    else:
-        TWO_PHASED = False
+    COMP_FUNC = "none"
+    TWO_PHASED = False
 
     pruning = REG > 0
     save_dir = root_dir / "comp={}/twophased={}/split={}/depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(COMP_FUNC, TWO_PHASED, SPLIT_FUNC, TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
