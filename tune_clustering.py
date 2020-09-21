@@ -28,7 +28,7 @@ EPOCHS = 100
 if DATA_NAME == "DIGITS":
     out_features = [20, 35, 50]
     in_features = list(set(range(64)) - set(out_features))
-    BATCH_SIZE = 128
+    BATCH_SIZE = 32
 
 elif DATA_NAME == "COVTYPE":
     out_features = [3, 4]
@@ -42,7 +42,7 @@ elif DATA_NAME == "GLASS":
 
 deterministic(SEED)
 
-data = Dataset(DATA_NAME, normalize=True, in_features=in_features, out_features=out_features, flatten=(DATA_NAME == "DIGITS") seed=459107)
+data = Dataset(DATA_NAME, normalize=True, in_features=in_features, out_features=out_features, flatten=(DATA_NAME == "DIGITS"), seed=459107)
 classes = np.unique(data.y_train)
 num_classes = max(classes) + 1
 
@@ -54,7 +54,7 @@ valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out), batch_si
 def objective(trial):
 
     TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 2, 6)
-    REG = trial.suggest_loguniform('REG', 1e-4, 1e3)
+    REG = trial.suggest_loguniform('REG', 1e-3, 1e3)
     
     print(f'depth={TREE_DEPTH}, reg={REG}')
     pruning = REG > 0

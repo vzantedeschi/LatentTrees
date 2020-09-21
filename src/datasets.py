@@ -52,7 +52,7 @@ class Dataset:
             self.y_test = data_dict['y_test']
 
             if flatten:
-                self.X_train, self.X_valid, self.X_test = self.X_train.reshape(len(X_train), -1), self.X_valid.reshape(len(X_valid), -1), self.X_test.reshape(len(X_test), -1)
+                self.X_train, self.X_valid, self.X_test = self.X_train.reshape(len(self.X_train), -1), self.X_valid.reshape(len(self.X_valid), -1), self.X_test.reshape(len(self.X_test), -1)
 
             if normalize:
 
