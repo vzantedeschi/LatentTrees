@@ -1,13 +1,14 @@
 import numpy as np
-import sys
 
 from pathlib import Path
 from tqdm import tqdm
 
 import torch
-from torch.optim import SGD
+from torch.nn import MSELoss
 from torch.optim.lr_scheduler import CosineAnnealingLR, MultiplicativeLR
 from torch.utils.data import DataLoader, RandomSampler
+
+import optuna
 
 from torchlars import LARS
 
@@ -20,28 +21,19 @@ from src.optimization import train_stochastic, evaluate
 from src.transformations import TransformsSimCLR
 from src.utils import deterministic 
 
-DATA_NAME = sys.argv[1]
+DATA_NAME = "ALOI"
 
-if DATA_NAME == "ALOI":
-    PROJ_DIM = 32
-    TREE_DEPTH = 6
-else:
-    PROJ_DIM = 8
-    TREE_DEPTH = 4
-
+SEED = 1337
+PROJ_DIM = 32
 BATCH_SIZE = 1024
 EPOCHS = 100
 SPLIT = 'conv'
 COMP = 'none'
-TEMP = 0.5
-DROPOUT = 0.
-REG = 0.
 
 LR = 0.6 * BATCH_SIZE / 256
 WU_LR = LR / 4 ** 5
 
 WD = 1e-6
-pruning = REG > 0
 
 if torch.cuda.is_available():
     pin_memory = True
@@ -63,21 +55,31 @@ train_dataset = TorchDataset(data.X_train, transform=transform)
 # to augment dataset
 train_sampler = RandomSampler(train_dataset, replacement=True, num_samples=100*BATCH_SIZE)
 
-trainloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=BATCH_SIZE, num_workers=6, pin_memory=pin_memory)
-valloader = DataLoader(TorchDataset(data.X_valid, transform=transform, test=True), batch_size=BATCH_SIZE, num_workers=6, pin_memory=pin_memory)
+trainloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=BATCH_SIZE, num_workers=8, pin_memory=pin_memory)
+valloader = DataLoader(TorchDataset(data.X_valid, transform=transform, test=True), batch_size=BATCH_SIZE, num_workers=8, pin_memory=pin_memory)
 
-test_scores= []
-for SEED in [1225]:
+deterministic(SEED)
 
-    deterministic(SEED)
+root_dir = Path("./results/optuna/contrastive/") / f"{DATA_NAME}/proj={PROJ_DIM}/comp={COMP}/split={SPLIT}"
 
-    save_dir = Path("./results/constrastive/") / DATA_NAME / "temperature={}/proj-dim={}/depth={}/reg={}/seed={}".format(TEMP, PROJ_DIM, TREE_DEPTH, REG, SEED)
+def objective(trial):
+
+    TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 2, 6)
+    REG = trial.suggest_loguniform('REG', 1e-3, 1e3)
+    TEMP = trial.suggest_uniform('TEMP', 0, 1)
+    DROPOUT = trial.suggest_uniform('DROPOUT', 0, 0.5)
+    
+    print(f'depth={TREE_DEPTH}, reg={REG}, temp={TEMP}, dropout={DROPOUT}')
+    pruning = REG > 0
+
+    save_dir = root_dir / f"depth={TREE_DEPTH}/reg={REG}/temp={TEMP}/dropout={DROPOUT}/seed={SEED}"
     save_dir.mkdir(parents=True, exist_ok=True)
 
     model = LTRegressor(TREE_DEPTH, in_size, PROJ_DIM, pruned=pruning, linear=False, split_func=SPLIT, dropout=DROPOUT, COMP_FUNC=COMP)
     model.to(device)
 
     print(model.count_parameters(), "model's parameters")
+
     # init optimizer
     optimizer = LARS(SGD(model.parameters(), lr=WU_LR, weight_decay=WD))
     
@@ -99,6 +101,7 @@ for SEED in [1225]:
         'seed': SEED,
         'dataset': DATA_NAME,
         'reg': REG,
+        'temperatur': TEMP,
     }
 
     best_val_loss = float('inf')
@@ -110,16 +113,11 @@ for SEED in [1225]:
         val_loss = evaluate(valloader, model, {'NT_XENT': criterion}, epoch=e, monitor=monitor, contrastive=True, device=device)
         print("Epoch %i: validation NT_XENT = %f\n" % (e, val_loss['NT_XENT']))
 
-        model.cpu()
-        val_score, hist = LT_dendrogram_purity(data.X_valid, data.y_valid, model, model.latent_tree.bst, num_classes)
-        print("Epoch %i: validation purity = %f" % (e, val_score))
-        model.to(device)
-
         no_improv += 1
         if val_loss['NT_XENT'] <= best_val_loss:
             best_val_loss = val_loss['NT_XENT']
             best_e = e
-            LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_NT_XENT=val_loss['NT_XENT'], val_dp=val_score)
+            LTRegressor.save_model(model, optimizer, state, save_dir, epoch=e, val_NT_XENT=val_loss['NT_XENT'])
             no_improv = 0
         
         if e < 5:
@@ -128,20 +126,33 @@ for SEED in [1225]:
             lr_scheduler.step()
 
         monitor.write(model, e, train={"lr": optimizer.param_groups[0]['lr']})
-        monitor.write(model, e, val={"dp": val_score})
 
-        del val_score, hist
+        if np.isnan(val_loss['NT_XENT']):
+            monitor.close()
+            raise optuna.TrialPruned()
+
         if no_improv == EPOCHS // 5:
             break
-
-    monitor.close()
-
+    
     model = LTRegressor.load_model(save_dir)
 
-    score, _ = LT_dendrogram_purity(data.X_test, data.y_test, model, model.latent_tree.bst, num_classes)
-    print("Epoch %i: test purity = %f\n" % (best_e, score))
-    
-    test_scores.append(score)
+    score, _ = LT_dendrogram_purity(data.X_valid, data.y_valid, model, model.latent_tree.bst, num_classes)
 
-print(np.mean(test_scores), np.std(test_scores))
-np.save(save_dir / '../test-scores.npy', test_scores)
+    print(f"Best model: validation mse = {best_val_loss}; validation purity = {score}\n")
+
+    monitor.write(model, e, val={"Dendrogram Purity": score})
+
+    monitor.close()         
+
+    return score
+
+if __name__ == "__main__":
+
+    study = optuna.create_study(study_name=DATA_NAME, direction="maximize")
+    study.optimize(objective, n_trials=100)
+
+    print(study.best_params, study.best_value)
+    df = study.trials_dataframe(attrs=('number', 'value', 'params', 'state'))
+
+    print(df)
+    df.to_csv(root_dir / "trials.csv")
