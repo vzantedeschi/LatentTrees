@@ -20,54 +20,36 @@ from src.datasets import Dataset, TorchDataset
 from src.utils import deterministic
 
 SEED = 1337
-DATA_NAME = "GLASS"
+DATA_NAME = "DIGITS"
 LR = 0.001
 EPOCHS = 100
 
-if torch.cuda.is_available():
-    pin_memory = True
-    device = torch.device("cuda:0")
-
-else:
-    pin_memory = False
-    device = torch.device("cpu")
-
-print("Training on", device)
-
 # selecting input and output features for self-supervised training
-if DATA_NAME == "ALOI":
-    in_features = [0, 2] # R and B
-    out_features = [1] # G
+if DATA_NAME == "DIGITS":
+    out_features = [20, 35, 50]
+    in_features = list(set(range(64)) - set(out_features))
     BATCH_SIZE = 128
-    SPLIT_FUNC = 'conv'
 
 elif DATA_NAME == "COVTYPE":
     out_features = [3, 4]
     in_features = list(set(range(54)) - set(out_features))
     BATCH_SIZE = 512
-    SPLIT_FUNC = 'linear'
 
 elif DATA_NAME == "GLASS":
     out_features = [0, 1]
     in_features = list(set(range(9)) - set(out_features))
     BATCH_SIZE = 8
-    SPLIT_FUNC = 'linear'
 
 deterministic(SEED)
 
-data = Dataset(DATA_NAME, normalize=True, in_features=in_features, out_features=out_features, seed=459107)
+data = Dataset(DATA_NAME, normalize=True, in_features=in_features, out_features=out_features, flatten=(DATA_NAME == "DIGITS") seed=459107)
 classes = np.unique(data.y_train)
 num_classes = max(classes) + 1
 
-root_dir = Path("./results/optuna/clustering-selfsup/") / "{}/out-feats={}/split={}".format(DATA_NAME, out_features, SPLIT_FUNC)
+root_dir = Path("./results/optuna/clustering-selfsup/") / "{}/out-feats={}/".format(DATA_NAME, out_features)
 
-if DATA_NAME == "ALOI":
-    trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE, shuffle=True, num_workers=12, pin_memory=pin_memory)
-    valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out, means=(data.mean[in_features], data.mean[out_features]), stds=(data.std[in_features], data.std[out_features])), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
-
-else:
-    trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out), batch_size=BATCH_SIZE, shuffle=True, num_workers=12, pin_memory=pin_memory)
-    valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12, pin_memory=pin_memory)
+trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out), batch_size=BATCH_SIZE, shuffle=True, num_workers=12)
+valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12)
 
 def objective(trial):
 
@@ -80,8 +62,7 @@ def objective(trial):
     save_dir = root_dir / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    model = LTRegressor(TREE_DEPTH, data.X_train_in.shape[1:], data.X_train_out.shape[1:], pruned=pruning, split_func=SPLIT_FUNC)
-    model.to(device)
+    model = LTRegressor(TREE_DEPTH, data.X_train_in.shape[1:], data.X_train_out.shape[1:], pruned=pruning)
 
     print(model.count_parameters(), "model's parameters")
 
