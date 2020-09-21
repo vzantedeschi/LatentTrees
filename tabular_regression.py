@@ -14,16 +14,18 @@ from src.optimization import train_stochastic, evaluate
 from src.datasets import Dataset, TorchDataset
 from src.utils import deterministic
 
-DATA_NAME = "MICROSOFT"
+DATA_NAME = "YEAR"
 LINEAR = False
-TREE_DEPTH = 8 
-REG = 784.2480977010307
-MLP_LAYERS = 3
-DROPOUT = 0.10054922066470592 
+TREE_DEPTH = 4 
+REG = 14.644863389820387
+MLP_LAYERS = 2
+DROPOUT =  0.17812236418286534
+SPLIT = "elu"
+COMP = "none"
 
 LR = 0.01
 BATCH_SIZE = 512 
-EPOCHS = 1
+EPOCHS = 100
 
 pruning = REG > 0
 
@@ -38,12 +40,12 @@ testloader = DataLoader(TorchDataset(data.X_test, data.y_test), batch_size=BATCH
 
 test_losses = []
 for SEED in [1225, 1337, 2020, 6021991]:
-    save_dir = Path("./results/tabular/") / DATA_NAME / "depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
+    save_dir = Path("./results/tabular/") / DATA_NAME / "comp={}/spit={}/depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(COMP, SPLIT, TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
     save_dir.mkdir(parents=True, exist_ok=True)
 
     deterministic(SEED)
 
-    model = LTRegressor(TREE_DEPTH, in_features, out_features, pruned=pruning, linear=LINEAR, layers=MLP_LAYERS, dropout=DROPOUT)
+    model = LTRegressor(TREE_DEPTH, in_features, out_features, pruned=pruning, linear=LINEAR, layers=MLP_LAYERS, dropout=DROPOUT, split_func=SPLIT, comp_func=COMP)
 
     # init optimizer
     optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.998))

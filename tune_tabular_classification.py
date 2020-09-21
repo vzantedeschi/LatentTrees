@@ -17,8 +17,8 @@ from src.datasets import Dataset, TorchDataset
 from src.utils import deterministic
 
 SEED = 1225
-DATA_NAME = "CLICK"
-LR = 0.1
+DATA_NAME = "HIGGS"
+LR = 0.01
 BATCH_SIZE = 512 
 EPOCHS = 100
 LINEAR = False
@@ -35,8 +35,8 @@ deterministic(SEED)
 
 def objective(trial):
 
-    TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 2, 8)
-    REG = trial.suggest_uniform('REG', 0, 1e3)
+    TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 2, 6)
+    REG = trial.suggest_loguniform('REG', 1e-3, 1e3)
     print(f'TREE_DEPTH={TREE_DEPTH}, REG={REG}')
 
     if not LINEAR:
