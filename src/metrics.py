@@ -59,6 +59,8 @@ def dendrogram_purity(bst, pred_y, true_y, purity, nb_classes):
         num_pairs += sum(c_pairs[:, n1 - bst.nb_split] * c_pairs[:, n2 - bst.nb_split])
         score += sum(purity[:, a] * c_pairs[:, n1 - bst.nb_split] * c_pairs[:, n2 - bst.nb_split])
 
+    del c_point_leaves, c_pairs, purity
+
     return score / num_pairs
 
 def node_statistics(X, Y, model, depth):
