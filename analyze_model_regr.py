@@ -16,7 +16,7 @@ from src.optimization import evaluate
 
 # LOAD_DIR = "./results/clustering-selfsup/GLASS/out-feats=[7, 8]/depth=6/reg=829.99828226139/seed=1225/"
 # LOAD_DIR = "./results/tabular/MICROSOFT/depth=8/reg=784.2480977010307/mlp-layers=3/dropout=0.10054922066470592/seed=1225/"
-LOAD_DIR = "./results/clustering-selfsup/GLASS/out-feats=[0, 1]/depth=6/reg=17.893973029582362/seed=1225/"
+LOAD_DIR = "./results/tabular/YEAR/comp=none/spit=elu/depth=4/reg=14.644863389820387/mlp-layers=2/dropout=0.17812236418286534/seed=1225/"
 
 additional_load = {'checkpoint': None}
 model = LTRegressor.load_model(LOAD_DIR, additional_load)
@@ -25,7 +25,7 @@ checkpoint = additional_load['checkpoint']
 DATA_NAME = checkpoint['dataset']
 SEED = checkpoint['seed']
 
-MAX_DEPTH = 3
+MAX_DEPTH = 4
 leaves = range(2**MAX_DEPTH - 1, 2**(MAX_DEPTH+1) - 1)
 
 if DATA_NAME in ['GLASS', 'COVTYPE', 'ALOI']:
@@ -47,21 +47,27 @@ else:
 
 NB_CLASSES = np.max(true_y) + 1
 
-medians, means, stds, y_distrs, zs = node_statistics(X, Y, model, MAX_DEPTH)
+stats = node_statistics(X, Y, model, MAX_DEPTH)
 
 # build graph for visualization
 G = nx.from_numpy_array(model.latent_tree.bst.to_adj_matrix(MAX_DEPTH))
 pos = graphviz_layout(G, prog='dot')
 
-for name, stat in {'median': medians, 'mean': means}.items():
+if len(stats) == 5:
+    medians, means, stds, y_distrs, zs = stats
 
-    plt.title(f'Distance from decision boundaries: {name}')
+    for name, stat in {'median': medians, 'mean': means}.items():
 
-    nx.draw(G, pos, arrows=True, node_color=stat, cmap=plt.cm.PuOr, alpha=0.5)
-    nx.draw_networkx_labels(G, pos, font_size=6, labels={i: np.round(d, decimals=2) for i, d in enumerate(stat)})
+        plt.title(f'Distance from decision boundaries: {name}')
 
-    plt.savefig(f'{LOAD_DIR}stat-{name}.png', bbox_inches='tight', transparent=False)
-    plt.clf()
+        nx.draw(G, pos, arrows=True, node_color=stat, cmap=plt.cm.PuOr, alpha=0.5)
+        nx.draw_networkx_labels(G, pos, font_size=6, labels={i: np.round(d, decimals=2) for i, d in enumerate(stat)})
+
+        plt.savefig(f'{LOAD_DIR}stat-{name}.png', bbox_inches='tight', transparent=False)
+        plt.clf()
+
+else:
+    stds, y_distrs, zs = stats
 
 plt.title(f'Standard Deviations')
 
@@ -92,6 +98,17 @@ if DATA_NAME in ['GLASS', 'COVTYPE', 'ALOI', 'MICROSOFT']:
         plt.savefig(f'{LOAD_DIR}class{c}.png', bbox_inches='tight')
         plt.clf()
 
+else:
+
+    plt.title(f'Target Paths - Mean')
+
+    nx.draw(G, pos, arrows=True, node_color=[np.mean(d) for d in y_distrs], cmap=plt.cm.PuBu, alpha=0.5)
+    nx.draw_networkx_labels(G, pos, font_size=6, labels={i: int(np.mean(d)) for i, d in enumerate(y_distrs)})
+
+    plt.savefig(f'{LOAD_DIR}y-mean.png', bbox_inches='tight', transparent=False)
+    plt.clf()
+
+exit(0)
 # plot target distributions
 for t in model.latent_tree.bst.nodes:
 
