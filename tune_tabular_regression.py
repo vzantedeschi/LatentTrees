@@ -17,21 +17,21 @@ from src.datasets import Dataset, TorchDataset
 from src.utils import deterministic
 
 SEED = 1225
-DATA_NAME = "YEAR"
-LR = 0.01
+DATA_NAME = "YAHOO"
+LR = 0.001
 BATCH_SIZE = 512 
 EPOCHS = 100
 LINEAR = False
 
-data = Dataset(DATA_NAME, normalize=True, normalize_target=True)
+data = Dataset(DATA_NAME, normalize=True, quantile_transform=True, normalize_target=True)
 in_features = data.X_train.shape[1]
 out_features = 1
 print("target mean = %.5f, std = %.5f" % (data.mean_y, data.std_y))
 
 root_dir = Path("./results/optuna/tabular/interpretable/") / "{}/linear={}/".format(DATA_NAME, LINEAR)
 
-trainloader = DataLoader(TorchDataset((data.X_train, data.y_train)), batch_size=BATCH_SIZE, num_workers=12, shuffle=True)
-valloader = DataLoader(TorchDataset((data.X_valid, data.y_valid)), batch_size=BATCH_SIZE*2, num_workers=12, shuffle=False)
+trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, num_workers=12, shuffle=True)
+valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATCH_SIZE*2, num_workers=12, shuffle=False)
 
 deterministic(SEED)
 
@@ -41,17 +41,13 @@ def objective(trial):
     REG = trial.suggest_loguniform('REG', 1e-3, 1e3)
     MLP_LAYERS = trial.suggest_int('MLP_LAYERS', 2, 7)
     DROPOUT = trial.suggest_uniform('DROPOUT', 0.0, 0.5)
-    SPLIT_FUNC = trial.suggest_categorical("SPLIT_FUNC", ["linear", "elu"])
-
-    COMP_FUNC = "none"
-    TWO_PHASED = False
 
     pruning = REG > 0
-    save_dir = root_dir / "comp={}/twophased={}/split={}/depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(COMP_FUNC, TWO_PHASED, SPLIT_FUNC, TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
+    save_dir = root_dir / "depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
     save_dir.mkdir(parents=True, exist_ok=True)
     print("trial saved in", save_dir)
     
-    model = LTRegressor(TREE_DEPTH, in_features, out_features, pruned=pruning, linear=LINEAR, layers=MLP_LAYERS, dropout=DROPOUT, split_func=SPLIT_FUNC, comp_func=COMP_FUNC)
+    model = LTRegressor(TREE_DEPTH, in_features, out_features, pruned=pruning, linear=LINEAR, layers=MLP_LAYERS, dropout=DROPOUT)
 
     # init optimizer
     optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.998))
@@ -73,15 +69,9 @@ def objective(trial):
         'dataset': DATA_NAME,
     }
 
-    if TWO_PHASED:
-        model.freeze("skip")
-
     best_val_loss = float("inf")
     best_e = -1
     for e in range(EPOCHS):
-
-        if TWO_PHASED and e == EPOCHS // 2:
-            model.unfreeze("skip")
 
         train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
             

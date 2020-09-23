@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from sklearn.preprocessing import QuantileTransformer
+
 from src.clus_datasets import *
 from src.tabular_datasets import *
 from src.toy_datasets import *
@@ -31,7 +33,7 @@ class Dataset:
     Code adapted from https://github.com/Qwicen/node/blob/master/lib/data.py .
 
     """
-    def __init__(self, dataset, data_path='./DATA', normalize=False, normalize_target=False, in_features=None, out_features=None, flatten=False, **kwargs):
+    def __init__(self, dataset, data_path='./DATA', normalize=False, normalize_target=False, quantile_transform=False, quantile_noise=1e-3, in_features=None, out_features=None, flatten=False, **kwargs):
         """
         Dataset is a dataclass that contains all training and evaluation data required for an experiment
         :param dataset: a pre-defined dataset name (see DATSETS) or a custom dataset
@@ -68,6 +70,18 @@ class Dataset:
                     self.X_train = (self.X_train - self.mean) / self.std
                     self.X_valid = (self.X_valid - self.mean) / self.std
                     self.X_test = (self.X_test - self.mean) / self.std
+
+            if quantile_transform:
+                quantile_train = np.copy(self.X_train)
+                if quantile_noise:
+                    stds = np.std(quantile_train, axis=0, keepdims=True)
+                    noise_std = quantile_noise / np.maximum(stds, quantile_noise)
+                    quantile_train += noise_std * np.random.randn(*quantile_train.shape)
+
+                qt = QuantileTransformer(output_distribution='normal').fit(quantile_train)
+                self.X_train = qt.transform(self.X_train)
+                self.X_valid = qt.transform(self.X_valid)
+                self.X_test = qt.transform(self.X_test)
 
             if normalize_target:
 
