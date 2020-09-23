@@ -24,7 +24,7 @@ DATA_NAME = sys.argv[1]
 
 if DATA_NAME == "ALOI":
     PROJ_DIM = 32
-    TREE_DEPTH = 6
+    TREE_DEPTH = 8
 else:
     PROJ_DIM = 8
     TREE_DEPTH = 4
@@ -34,8 +34,8 @@ EPOCHS = 100
 SPLIT = 'conv'
 COMP = 'none'
 TEMP = 0.5
-DROPOUT = 0.
-REG = 0.
+DROPOUT = 0.1
+REG = 2.
 
 LR = 0.6 * BATCH_SIZE / 256
 WU_LR = LR / 4 ** 5
@@ -45,6 +45,7 @@ pruning = REG > 0
 
 if torch.cuda.is_available():
     pin_memory = True
+
     device = torch.device("cuda:0")
 
 else:
@@ -63,8 +64,8 @@ train_dataset = TorchDataset(data.X_train, transform=transform)
 # to augment dataset
 train_sampler = RandomSampler(train_dataset, replacement=True, num_samples=100*BATCH_SIZE)
 
-trainloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=BATCH_SIZE, num_workers=6, pin_memory=pin_memory)
-valloader = DataLoader(TorchDataset(data.X_valid, transform=transform, test=True), batch_size=BATCH_SIZE, num_workers=6, pin_memory=pin_memory)
+trainloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=BATCH_SIZE, num_workers=8, pin_memory=pin_memory)
+valloader = DataLoader(TorchDataset(data.X_valid, transform=transform, test=True), batch_size=BATCH_SIZE, num_workers=8, pin_memory=pin_memory)
 
 test_scores= []
 for SEED in [1225]:

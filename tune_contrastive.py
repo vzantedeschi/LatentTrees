@@ -4,7 +4,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 import torch
-from torch.nn import MSELoss
+from torch.optim import SGD
 from torch.optim.lr_scheduler import CosineAnnealingLR, MultiplicativeLR
 from torch.utils.data import DataLoader, RandomSampler
 
@@ -26,7 +26,7 @@ DATA_NAME = "ALOI"
 SEED = 1337
 PROJ_DIM = 32
 BATCH_SIZE = 1024
-EPOCHS = 100
+EPOCHS = 200
 SPLIT = 'conv'
 COMP = 'none'
 
@@ -35,13 +35,8 @@ WU_LR = LR / 4 ** 5
 
 WD = 1e-6
 
-if torch.cuda.is_available():
-    pin_memory = True
-    device = torch.device("cuda:0")
-
-else:
-    pin_memory = False
-    device = torch.device("cpu")
+pin_memory = False
+device = torch.device("cpu")
 
 print("Training on", device)
 
@@ -55,8 +50,8 @@ train_dataset = TorchDataset(data.X_train, transform=transform)
 # to augment dataset
 train_sampler = RandomSampler(train_dataset, replacement=True, num_samples=100*BATCH_SIZE)
 
-trainloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=BATCH_SIZE, num_workers=8, pin_memory=pin_memory)
-valloader = DataLoader(TorchDataset(data.X_valid, transform=transform, test=True), batch_size=BATCH_SIZE, num_workers=8, pin_memory=pin_memory)
+trainloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=BATCH_SIZE, num_workers=16, pin_memory=pin_memory)
+valloader = DataLoader(TorchDataset(data.X_valid, transform=transform, test=True), batch_size=BATCH_SIZE, num_workers=16, pin_memory=pin_memory)
 
 deterministic(SEED)
 
@@ -64,7 +59,7 @@ root_dir = Path("./results/optuna/contrastive/") / f"{DATA_NAME}/proj={PROJ_DIM}
 
 def objective(trial):
 
-    TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 2, 6)
+    TREE_DEPTH = trial.suggest_int('TREE_DEPTH', 6, 10)
     REG = trial.suggest_loguniform('REG', 1e-3, 1e3)
     TEMP = trial.suggest_uniform('TEMP', 0, 1)
     DROPOUT = trial.suggest_uniform('DROPOUT', 0, 0.5)
@@ -111,7 +106,6 @@ def objective(trial):
         train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor, contrastive=True, device=device)
 
         val_loss = evaluate(valloader, model, {'NT_XENT': criterion}, epoch=e, monitor=monitor, contrastive=True, device=device)
-        print("Epoch %i: validation NT_XENT = %f\n" % (e, val_loss['NT_XENT']))
 
         no_improv += 1
         if val_loss['NT_XENT'] <= best_val_loss:
@@ -138,7 +132,7 @@ def objective(trial):
 
     score, _ = LT_dendrogram_purity(data.X_valid, data.y_valid, model, model.latent_tree.bst, num_classes)
 
-    print(f"Best model: validation mse = {best_val_loss}; validation purity = {score}\n")
+    print(f"Best model, epoch {best_e}: validation mse = {best_val_loss}; validation purity = {score}\n")
 
     monitor.write(model, e, val={"Dendrogram Purity": score})
 
@@ -149,7 +143,7 @@ def objective(trial):
 if __name__ == "__main__":
 
     study = optuna.create_study(study_name=DATA_NAME, direction="maximize")
-    study.optimize(objective, n_trials=100)
+    study.optimize(objective, n_trials=10)
 
     print(study.best_params, study.best_value)
     df = study.trials_dataframe(attrs=('number', 'value', 'params', 'state'))

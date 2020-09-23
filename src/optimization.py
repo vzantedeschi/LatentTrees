@@ -79,7 +79,7 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
             if device:
                 t_i = t_i.to(device)
                 t_j = t_j.to(device)
-
+            
             z_i, z_j = model(t_i), model(t_j)
             
             loss = criterion(z_i, z_j, len(t_i))
@@ -113,7 +113,6 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
 
             if prog_bar:
                 pbar.set_description("avg train loss %f" % (train_obj / (i + 1)))
-
         obj.backward()
 
         optimizer.step()

@@ -25,7 +25,6 @@ DATA_NAME = "ALOI"
 LR = 0.001
 EPOCHS = 100
 BATCH_SIZE = 512
-PROJ_DIM = 128
 NB_FEATS = 100
 
 out_features = list(range(NB_FEATS))
@@ -37,11 +36,11 @@ data = Dataset(DATA_NAME, seed=459107)
 classes = np.unique(data.y_train)
 num_classes = max(classes) + 1
 
-root_dir = Path("./results/optuna/clustering-inception/") / f"{DATA_NAME}/proj-dim={PROJ_DIM}/out-feats={NB_FEATS}/"
+root_dir = Path("./results/optuna/clustering-inception/") / f"{DATA_NAME}/out-feats={NB_FEATS}/"
 
 transform = TransformInception(in_features, out_features)
 
-trainloader = DataLoader(TorchDataset(data.X_train, transform=transform), batch_size=BATCH_SIZE, shuffle=True, num_workers=12)
+trainloader = DataLoader(TorchDataset(data.X_train, transform=transform), batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
 valloader = DataLoader(TorchDataset(data.X_valid, transform=transform), batch_size=BATCH_SIZE, shuffle=False, num_workers=12)
 
 def objective(trial):
@@ -55,7 +54,7 @@ def objective(trial):
     save_dir = root_dir / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    model = LTRegressor(TREE_DEPTH, 1000, PROJ_DIM, pruned=pruning)
+    model = LTRegressor(TREE_DEPTH, len(in_features), NB_FEATS, pruned=pruning)
 
     print(model.count_parameters(), "model's parameters")
 
@@ -121,7 +120,7 @@ def objective(trial):
 
 if __name__ == "__main__":
 
-    study = optuna.create_study(study_name=DATA_NAME, direction="maximize")
+    study = optuna.create_study(study_name=DATA_NAME + "-inception", direction="maximize")
     study.optimize(objective, n_trials=100)
 
     print(study.best_params, study.best_value)

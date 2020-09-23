@@ -53,7 +53,11 @@ class TransformInception:
 
     def __init__(self, in_features, out_features):
         
+        self.in_features = in_features
+        self.out_features = out_features
+
         trans_list = [
+            transforms.ToPILImage(),
             transforms.Resize(299), 
             transforms.CenterCrop(299), 
             transforms.ToTensor(),
@@ -61,9 +65,11 @@ class TransformInception:
 
         self.transform = transforms.Compose(trans_list)
 
-        self.projector = inception_v3(pretrained=True, transform_input=True)
+        self.projector = inception_v3(pretrained=True, transform_input=True, aux_logits=False)
 
     def __call__(self, x):
-
-        z = self.projector(self.transform(x))
-        return [z[:, in_features], z[:, out_features]]
+        
+        t = self.transform(x).unsqueeze(0)
+        z = self.projector(t)
+        
+        return [z[:, self.in_features], z[:, self.out_features]]

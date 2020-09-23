@@ -135,7 +135,6 @@ class LatentTree(torch.nn.Module):
             self.eta = torch.nn.Parameter(torch.rand(self.bst.nb_nodes))
 
     def forward(self, x):
-
         q = self._compute_q(x)
         z = torch.clamp(q, 0, 1)
 
