@@ -1,6 +1,7 @@
 """ Code adapted from https://github.com/Spijkervet/SimCLR/blob/148d5987c90c70003d6611c5f22d8346d4649dbe/modules/transformations/simclr.py"""
 
-import torchvision
+from torchvision import transforms
+from torchvision.models import inception_v3
 
 class TransformsSimCLR:
     """
@@ -11,40 +12,58 @@ class TransformsSimCLR:
 
     def __init__(self, size):
         s = 1
-        color_jitter = torchvision.transforms.ColorJitter(
+        color_jitter = transforms.ColorJitter(
             0.8 * s, 0.8 * s, 0.8 * s, 0.2 * s
         )
 
         trans_list = [
-            torchvision.transforms.ToPILImage(),
-            torchvision.transforms.RandomResizedCrop(size=size[1:]),
-            torchvision.transforms.RandomHorizontalFlip(),  # with 0.5 probability
-            torchvision.transforms.RandomApply([color_jitter], p=0.8),
+            transforms.ToPILImage(),
+            transforms.RandomResizedCrop(size=size[1:]),
+            transforms.RandomHorizontalFlip(),  # with 0.5 probability
+            transforms.RandomApply([color_jitter], p=0.8),
         ]
 
         test_trans_list = [
-            torchvision.transforms.ToPILImage(),
-            torchvision.transforms.Resize(size=size[1:]),
+            transforms.ToPILImage(),
+            transforms.Resize(size=size[1:]),
         ]
 
         if size[0] == 1:
             trans_list.extend([
-                torchvision.transforms.Grayscale(num_output_channels=1),
+                transforms.Grayscale(num_output_channels=1),
             ])
 
             test_trans_list.extend([
-                torchvision.transforms.Grayscale(num_output_channels=1),
+                transforms.Grayscale(num_output_channels=1),
             ])
 
         else:
             trans_list.extend([
-                torchvision.transforms.RandomGrayscale(p=0.2),
+                transforms.RandomGrayscale(p=0.2),
             ])
 
-        self.train_transform = torchvision.transforms.Compose((*trans_list, torchvision.transforms.ToTensor()))
+        self.train_transform = transforms.Compose((*trans_list, transforms.ToTensor()))
 
-        self.test_transform = torchvision.transforms.Compose((*test_trans_list, torchvision.transforms.ToTensor()))
+        self.test_transform = transforms.Compose((*test_trans_list, transforms.ToTensor()))
 
     def __call__(self, x):
         return [self.train_transform(x), self.train_transform(x)]
 
+class TransformInception:
+
+    def __init__(self, in_features, out_features):
+        
+        trans_list = [
+            transforms.Resize(299), 
+            transforms.CenterCrop(299), 
+            transforms.ToTensor(),
+        ]
+
+        self.transform = transforms.Compose(trans_list)
+
+        self.projector = inception_v3(pretrained=True, transform_input=True)
+
+    def __call__(self, x):
+
+        z = self.projector(self.transform(x))
+        return [z[:, in_features], z[:, out_features]]
