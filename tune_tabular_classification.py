@@ -18,12 +18,12 @@ from src.utils import deterministic
 
 SEED = 1225
 DATA_NAME = "HIGGS"
-LR = 0.01
+LR = 0.001
 BATCH_SIZE = 512 
 EPOCHS = 100
 LINEAR = False
 
-data = Dataset(DATA_NAME, normalize=True, seed=459107)
+data = Dataset(DATA_NAME, normalize=True, quantile_transform=True, seed=459107)
 print('classes', np.unique(data.y_test))
 
 trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, num_workers=12, shuffle=True)
