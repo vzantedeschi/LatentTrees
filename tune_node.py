@@ -87,7 +87,7 @@ def objective(trial):
         trainer.average_checkpoints(out_tag='avg')
         trainer.load_checkpoint(tag='avg')
         mse = trainer.evaluate_mse(
-            data.X_valid.float(), data.y_valid, device=device, batch_size=BATCH_SIZE*2)
+            data.X_valid, data.y_valid, device=device, batch_size=BATCH_SIZE*2)
 
         if mse < best_mse:
             best_mse = mse

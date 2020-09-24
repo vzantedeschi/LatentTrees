@@ -140,7 +140,7 @@ class Trainer(nn.Module):
 
     def evaluate_mse(self, X_test, y_test, device, batch_size=4096):
         X_test = torch.as_tensor(X_test, device=device).float()
-        y_test = check_numpy(y_test).float()
+        y_test = check_numpy(y_test)
         self.model.train(False)
         with torch.no_grad():
             prediction = process_in_chunks(self.model, X_test, batch_size=batch_size)

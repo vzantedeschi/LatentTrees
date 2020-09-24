@@ -1,4 +1,5 @@
 import xgboost as xgb
+import numpy as np
 
 import sys
 import optuna
@@ -9,7 +10,7 @@ from src.utils import deterministic
 DATA_NAME = sys.argv[1]
 WORKERS = int(sys.argv[2])
 
-EPOCHS = 100
+ROUNDS = 10000
 SEED = 1337
 
 data = Dataset(DATA_NAME, normalize=True, quantile_transform=True, normalize_target=True)
@@ -51,7 +52,7 @@ def objective(trial):
 
     evallist = [(dvalid, 'valid')]
 
-    bst = xgb.train(param, dtrain, EPOCHS, evallist, early_stopping_rounds=EPOCHS // 5)
+    bst = xgb.train(param, dtrain, ROUNDS, evallist, early_stopping_rounds=20)
 
     ypred = bst.predict(dvalid, ntree_limit=bst.best_ntree_limit)
 
