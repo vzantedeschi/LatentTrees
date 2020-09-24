@@ -15,13 +15,17 @@ import optuna
 from src.datasets import Dataset, TorchDataset
 from src.utils import deterministic
 
-DATA_NAME = "YEAR"
+import sys
+
+DATA_NAME = sys.argv[1]
+WORKERS = int(sys.argv[2])
+
 BATCH_SIZE = 512
 EPOCHS = 100
 SEED = 1337
 LR = 0.001
 
-device = torch.device("cpu")
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 data = Dataset(DATA_NAME, normalize=True, quantile_transform=True, normalize_target=True)
 in_features = data.X_train.shape[1]
@@ -32,7 +36,7 @@ root_dir = f"results/node/optuna/{DATA_NAME}/seed={SEED}/"
 
 deterministic(SEED)
 
-trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, num_workers=16, shuffle=True)
+trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, num_workers=WORKERS, shuffle=True)
 
 def objective(trial):
 
@@ -48,7 +52,10 @@ def objective(trial):
         node.DenseBlock(in_features, NUM_TREES // NUM_LAYERS, num_layers=NUM_LAYERS, tree_dim=TREE_DIM, depth=TREE_DEPTH, flatten_output=False, choice_function=node.entmax15, bin_function=node.entmoid15),
         node.Lambda(lambda x: x[..., 0].mean(dim=-1)),  # average first channels of every tree
     )
-
+    model.to(device)
+    if torch.cuda.device_count() > 1:
+        model = nn.DataParallel(model)
+    
     with torch.no_grad():
         res = model(torch.as_tensor(data.X_train[:5000]))
         # trigger data-aware init
@@ -72,7 +79,7 @@ def objective(trial):
 
     for e in range(EPOCHS):
 
-        for batch in trainloader:
+        for batch in tqdm(trainloader, desc=f"epoch {e}"):
 
             metrics = trainer.train_on_batch(*batch, device=device)
 

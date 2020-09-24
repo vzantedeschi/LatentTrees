@@ -13,26 +13,25 @@ from src.optimization import train_stochastic, evaluate
 from src.datasets import Dataset, TorchDataset
 from src.utils import deterministic
 
-TREE_DEPTH=3
-REG=0.2635053907387666
-MLP_LAYERS=4
-DROPOUT=0.03195948841991596
-
-DATA_NAME = "HIGGS"
+TREE_DEPTH=4
+REG=1.4837286400170702
+MLP_LAYERS=5
+DROPOUT=0.07041761417608994
+DATA_NAME = "CLICK"
 LR = 0.001
 BATCH_SIZE = 512 
 EPOCHS = 100
 
 pruning = REG > 0
 
-data = Dataset(DATA_NAME, normalize=True, seed=459107)
+data = Dataset(DATA_NAME, normalize=True, quantile_transform=True, seed=459107)
 print('classes', np.unique(data.y_test))
 
 test_losses = []
 for SEED in [1225, 1337, 2020, 6021991]:
     deterministic(SEED)
 
-    save_dir = Path("./results/tabular/") / DATA_NAME / "depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
+    save_dir = Path("./results/tabular-quantile/") / DATA_NAME / "depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
     save_dir.mkdir(parents=True, exist_ok=True)
 
     trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, shuffle=True)
@@ -64,16 +63,22 @@ for SEED in [1225, 1337, 2020, 6021991]:
 
     best_val_loss = float("inf")
     best_e = -1
+    no_improv = 0
     for e in range(EPOCHS):
         train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
 
         val_loss = evaluate(valloader, model, {'ER': eval_criterion}, epoch=e, monitor=monitor)
         print("Epoch %i: validation loss = %f\n" % (e, val_loss["ER"]))
+        no_improv += 1
 
         if val_loss["ER"] <= best_val_loss:
             best_val_loss = val_loss["ER"]
             best_e = e
-            LTBinaryClassifier.save_model(model, optimizer, state, save_dir, epoch=e, val_loss=best_val_loss)
+            no_improv = 0
+            LTBinaryClassifier.save_model(model, optimizer, state, save_dir, epoch=e, val_er=best_val_loss)
+
+        if no_improv == EPOCHS // 5:
+            break
 
     monitor.close()
     print("best validation error rate (epoch {}): {}\n".format(best_e, best_val_loss))

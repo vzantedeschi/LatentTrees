@@ -115,8 +115,8 @@ class Trainer(nn.Module):
 
     def train_on_batch(self, *batch, device):
         x_batch, y_batch = batch
-        x_batch = x_batch.to(device)
-        y_batch = y_batch.to(device)
+        x_batch = x_batch.to(device).float()
+        y_batch = y_batch.to(device).float()
 
         self.model.train()
         self.opt.zero_grad()
@@ -139,8 +139,8 @@ class Trainer(nn.Module):
         return error_rate
 
     def evaluate_mse(self, X_test, y_test, device, batch_size=4096):
-        X_test = torch.as_tensor(X_test, device=device)
-        y_test = check_numpy(y_test)
+        X_test = torch.as_tensor(X_test, device=device).float()
+        y_test = check_numpy(y_test).float()
         self.model.train(False)
         with torch.no_grad():
             prediction = process_in_chunks(self.model, X_test, batch_size=batch_size)
