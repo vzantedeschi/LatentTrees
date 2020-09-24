@@ -1,5 +1,3 @@
-import os, sys
-import time
 import numpy as np
 
 import node
@@ -48,7 +46,6 @@ def objective(trial):
         node.Lambda(lambda x: x[..., 0].mean(dim=-1)),  # average first channels of every tree
     )
 
-    t0 = time.time()
     with torch.no_grad():
         res = model(torch.as_tensor(data.X_train[:5000]))
         # trigger data-aware init
@@ -81,7 +78,7 @@ def objective(trial):
             trainer.average_checkpoints(out_tag='avg')
             trainer.load_checkpoint(tag='avg')
             mse = trainer.evaluate_mse(
-                data.X_valid, data.y_valid, device=device, batch_size=BATCH_SIZE*2)
+                data.X_valid.float(), data.y_valid, device=device, batch_size=BATCH_SIZE*2)
 
             if mse < best_mse:
                 best_mse = mse

@@ -53,6 +53,7 @@ loss_history, mse_history = [], []
 best_mse = float('inf')
 best_step_mse = 0
 report_frequency = 100
+early_stopping_rounds = 5000
 
 for batch in tqdm(node.iterate_minibatches(data.X_train, data.y_train, batch_size=BATCH_SIZE, shuffle=True, epochs=EPOCHS)):
     metrics = trainer.train_on_batch(*batch, device=device)
@@ -77,6 +78,12 @@ for batch in tqdm(node.iterate_minibatches(data.X_train, data.y_train, batch_siz
 
         print("Loss %.5f" % (metrics['loss']))
         print("Val MSE: %0.5f" % (mse))
+
+        if trainer.step > best_step_mse + early_stopping_rounds:          
+            break
+
+        print("Best step: ", best_step_mse)
+        print("Best Val MSE: %0.5f" % (best_mse))
 
 t1 = time.time()
 
