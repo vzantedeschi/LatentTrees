@@ -10,3 +10,4 @@ qhoptim==1.1.0
 sklearn==0.0
 tensorboardX==2.0
 tqdm==4.46.0
+xgboost==1.2.0
