@@ -40,7 +40,7 @@ class Trainer(nn.Module):
             if self.verbose:
                 print('using automatic experiment name: ' + experiment_name)
 
-        self.experiment_path = os.path.join('logs/', experiment_name)
+        self.experiment_path = experiment_name
         if not warm_start and experiment_name != 'debug':
             assert not os.path.exists(self.experiment_path), 'experiment {} already exists'.format(experiment_name)
         self.writer = SummaryWriter(self.experiment_path, comment=experiment_name)
