@@ -3,6 +3,7 @@ import numpy as np
 import node
 import torch, torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
 
 from qhoptim.pyt import QHAdam
 from tqdm import tqdm
@@ -11,7 +12,7 @@ from pathlib import Path
 
 import optuna
 
-from src.datasets import Dataset
+from src.datasets import Dataset, TorchDataset
 from src.utils import deterministic
 
 DATA_NAME = "YEAR"
@@ -30,6 +31,8 @@ print("target mean = %.5f, std = %.5f" % (data.mean_y, data.std_y))
 root_dir = f"results/node/optuna/{DATA_NAME}/seed={SEED}/"
 
 deterministic(SEED)
+
+trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH_SIZE, num_workers=16, shuffle=True)
 
 def objective(trial):
 
@@ -65,37 +68,35 @@ def objective(trial):
 
     best_mse = float('inf')
     best_step_mse = 0
-    report_frequency = 100
-    early_stopping_rounds = 5000
+    early_stopping_rounds = EPOCHS // 5
 
-    for batch in tqdm(node.iterate_minibatches(data.X_train.float(), data.y_train, batch_size=BATCH_SIZE, shuffle=True, epochs=EPOCHS), desc=""):
-        metrics = trainer.train_on_batch(*batch, device=device)
+    for e in range(EPOCHS):
+
+        for batch in trainloader:
+
+            metrics = trainer.train_on_batch(*batch, device=device)
+
+        trainer.save_checkpoint()
+        trainer.average_checkpoints(out_tag='avg')
+        trainer.load_checkpoint(tag='avg')
+        mse = trainer.evaluate_mse(
+            data.X_valid.float(), data.y_valid, device=device, batch_size=BATCH_SIZE*2)
+
+        if mse < best_mse:
+            best_mse = mse
+            best_step_mse = e
+            trainer.save_checkpoint(tag='best_mse')
         
-        loss_history.append(metrics['loss'])
+        trainer.load_checkpoint()  # last
+        trainer.remove_old_temp_checkpoints()
 
-        if trainer.step % report_frequency == 0:
-            trainer.save_checkpoint()
-            trainer.average_checkpoints(out_tag='avg')
-            trainer.load_checkpoint(tag='avg')
-            mse = trainer.evaluate_mse(
-                data.X_valid.float(), data.y_valid, device=device, batch_size=BATCH_SIZE*2)
+        trial.report(mse * data.std_y**2, e)
 
-            if mse < best_mse:
-                best_mse = mse
-                best_step_mse = trainer.step
-                trainer.save_checkpoint(tag='best_mse')
-            
-            trainer.load_checkpoint()  # last
-            trainer.remove_old_temp_checkpoints()
+        # Handle pruning based on the intermediate value.
+        if trial.should_prune() or np.isnan(mse):
+            raise optuna.TrialPruned()
 
-            trial.report(mse * data.std_y**2, trainer.step)
-
-            # Handle pruning based on the intermediate value.
-            if trial.should_prune() or np.isnan(mse):
-                
-                raise optuna.TrialPruned()
-
-        if trainer.step > best_step_mse + early_stopping_rounds:          
+        if e > best_step_mse + early_stopping_rounds:          
             break
 
     print("Best step: ", best_step_mse)
