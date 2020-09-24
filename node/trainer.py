@@ -93,7 +93,7 @@ class Trainer(nn.Module):
         averaged_ckpt = deepcopy(checkpoints[0])
         for key in averaged_ckpt['model']:
             values = [ckpt['model'][key] for ckpt in checkpoints]
-            averaged_ckpt['model'][key] = sum(values) / len(values)
+            averaged_ckpt['model'][key] = sum(values) // len(values)
 
         if out_path is None:
             out_path = os.path.join(self.experiment_path, 'checkpoint_{}.pth'.format(out_tag))

@@ -54,8 +54,7 @@ best_mse = float('inf')
 best_step_mse = 0
 report_frequency = 100
 
-for batch in node.iterate_minibatches(data.X_train, data.y_train, batch_size=BATCH_SIZE, 
-                                                shuffle=True, epochs=EPOCHS):
+for batch in tqdm(node.iterate_minibatches(data.X_train, data.y_train, batch_size=BATCH_SIZE, shuffle=True, epochs=EPOCHS)):
     metrics = trainer.train_on_batch(*batch, device=device)
     
     loss_history.append(metrics['loss'])
@@ -82,7 +81,7 @@ for batch in node.iterate_minibatches(data.X_train, data.y_train, batch_size=BAT
 t1 = time.time()
 
 print("Best step: ", best_step_mse)
-print("Best Val MSE: %0.5f" % (best_mse))
+print("Best Val MSE: %0.5f" % (best_mse * std ** 2))
 print(f"Training time: {t1 - t0}s")
 
 t2 = time.time()
@@ -92,5 +91,5 @@ mse = trainer.evaluate_mse(data.X_test, data.y_test, device=device, batch_size=B
 
 t3 = time.time()
 print('Best step: ', trainer.step)
-print("Test MSE: %0.5f" % (mse))
+print("Test MSE: %0.5f" % (mse * std ** 2))
 print(f"Inference time: {t3 - t2}s")
