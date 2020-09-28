@@ -258,7 +258,7 @@ class Forest(torch.nn.Module):
         return prob
 
 class NeuralDecisionForest(torch.nn.Module):
-    def __init__(self, in_size, num_classes, num_trees=1, tree_depth=1, tree_feature_rate=1., jointly_training=True):
+    def __init__(self, in_size, num_classes, num_trees=1, tree_depth=1, tree_feature_rate=1., jointly_training=True, **kwargs):
 
         super(NeuralDecisionForest, self).__init__()
 
