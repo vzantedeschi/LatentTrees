@@ -11,9 +11,9 @@ class MonitorTree():
         self.writer = SummaryWriter(logdir)
         self.pruning = pruning
 
-    def write(self, model, it, **metrics):
+    def write(self, model, it, report_tree=False, **metrics):
 
-        if self.pruning:
+        if report_tree and self.pruning:
 
             self.writer.add_scalars('variables/eta_group', 
                 {"linf": torch.norm(model.latent_tree.eta, p=float('inf')),

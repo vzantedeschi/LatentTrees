@@ -13,7 +13,16 @@ WORKERS = int(sys.argv[2])
 ROUNDS = 10000
 SEED = 1337
 
-data = Dataset(DATA_NAME, normalize=True, quantile_transform=True, normalize_target=True)
+if DATA_NAME in ["MICROSOFT", "YEAR", "YAHOO"]:
+    data = Dataset(DATA_NAME, normalize=True, quantile_transform=True, normalize_target=True)
+    objective = 'reg:squarederror'
+    metric = 'rmse'
+
+else:
+    data = Dataset(DATA_NAME, normalize=True, quantile_transform=True)
+    objective = 'reg:logistic'
+    metric = 'error'
+
 dtrain = xgb.DMatrix(data.X_train, label=data.y_train)
 dvalid = xgb.DMatrix(data.X_valid, label=data.y_valid)
 
@@ -34,9 +43,9 @@ def objective(trial):
     GAMMA = trial.suggest_loguniform("GAMMA", 1e-16, 1e2)
 
     param = {
-        'objective': 'reg:squarederror',
+        'objective': objective,
         'nthread': WORKERS,
-        'eval_metric': 'rmse',
+        'eval_metric': metric,
         'eta': ETA,
         'gamma': GAMMA,
         'max_depth': TREE_DEPTH,
@@ -56,12 +65,17 @@ def objective(trial):
 
     ypred = bst.predict(dvalid, ntree_limit=bst.best_ntree_limit)
 
-    best_mse = np.mean((data.y_valid - ypred) ** 2)
+    if DATA_NAME in ["MICROSOFT", "YEAR", "YAHOO"]:
+
+        best_loss = np.mean((data.y_valid - ypred) ** 2) * data.std_y**2
+
+    else:
+        best_loss = (data.y_valid != ypred).sum()
 
     print("Best step: ", bst.best_ntree_limit)
-    print("Best Val MSE: %0.5f" % (best_mse * data.std_y**2))
+    print("Best Val Loss: %0.5f" % (best_loss))
 
-    return best_mse * data.std_y**2
+    return best_loss 
 
 if __name__ == "__main__":
 
