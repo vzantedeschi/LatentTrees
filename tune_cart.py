@@ -41,6 +41,8 @@ def objective(trial):
 
     ypred = model.predict(data.X_train)
     loss_train = metric(data.y_train, ypred)
+
+    print(model.get_params())
     print("Train:", loss_train)
 
     ypred = model.predict(data.X_valid)
