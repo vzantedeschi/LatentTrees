@@ -4,7 +4,7 @@ import sys
 
 from pathlib import Path
 
-from torch.nn import BCELoss
+from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
@@ -22,7 +22,7 @@ TEMP = 0.1
 
 LR = 0.001
 BATCH_SIZE = 512 
-EPOCHS = 1
+EPOCHS = 100
 
 data = Dataset(DATA_NAME, normalize=True, quantile_transform=True)
 in_features = data.X_train.shape[1]
@@ -46,7 +46,7 @@ for SEED in [1225, 1337, 2020, 6021991]:
     optimizer = QHAdam(model.parameters(), lr=LR, nus=(0.7, 1.0), betas=(0.995, 0.998))
 
     # init loss
-    criterion = BCELoss(reduction="sum")
+    criterion = CrossEntropyLoss(reduction="sum")
     
     # evaluation criterion => error rate
     eval_criterion = lambda x, y: (x != y).sum()
@@ -56,7 +56,7 @@ for SEED in [1225, 1337, 2020, 6021991]:
 
     state = {
         'batch-size': BATCH_SIZE,
-        'loss-function': 'BCE',
+        'loss-function': 'CE',
         'learning-rate': LR,
         'seed': SEED,
         'dataset': DATA_NAME,
@@ -70,7 +70,6 @@ for SEED in [1225, 1337, 2020, 6021991]:
         train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=0)
 
         val_loss = evaluate(valloader, model, {'valid_ER': eval_criterion}, epoch=e)
-        print(f"Epoch {e}: {val_loss}\n")
         
         no_improv += 1
         if val_loss['valid_ER'] <= best_val_loss:

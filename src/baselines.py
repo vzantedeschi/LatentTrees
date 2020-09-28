@@ -3,6 +3,7 @@ import pandas as pd
 import torch
 
 from functools import reduce
+from pathlib import Path
 
 from pyoptree.optree import OptimalTreeModel
 
@@ -86,7 +87,7 @@ def torch_bin(x, cut_points, temperature=0.1):
 
 class DNDT(torch.nn.Module):
 
-    def __init__(self, in_size, num_classes, num_cuts=1, temperature=0.1):
+    def __init__(self, in_size, num_classes, num_cuts=1, temperature=0.1, **kwargs):
 
         super().__init__()
 
@@ -107,6 +108,12 @@ class DNDT(torch.nn.Module):
                   map(lambda z: torch_bin(x[:, z[0]:z[0] + 1], z[1], self.temperature), enumerate(self.cut_points_list)))
         
         return torch.matmul(leaf, self.leaf_score)
+    
+    def predict(self, x):
+
+        y = self(x)
+
+        return torch.argmax(y, axis=1).detach()
 
     def count_parameters(self):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
