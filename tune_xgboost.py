@@ -4,6 +4,8 @@ import numpy as np
 import sys
 import optuna
 
+from pathlib import Path
+
 from src.datasets import Dataset
 from src.utils import deterministic
 
@@ -17,7 +19,8 @@ data = Dataset(DATA_NAME, normalize=True, quantile_transform=True, normalize_tar
 dtrain = xgb.DMatrix(data.X_train, label=data.y_train)
 dvalid = xgb.DMatrix(data.X_valid, label=data.y_valid)
 
-root_dir = f"results/xgboost/optuna/{DATA_NAME}/seed={SEED}/"
+root_dir = Path(f"results/xgboost/optuna/{DATA_NAME}/seed={SEED}/")
+root_dir.mkdir(parents=True, exist_ok=True)
 
 deterministic(SEED)
 
