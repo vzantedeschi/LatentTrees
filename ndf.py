@@ -55,7 +55,7 @@ for SEED in [1225, 1337, 2020, 6021991]:
 
     state = {
         'batch-size': BATCH_SIZE,
-        'loss-function': 'BCE',
+        'loss-function': 'NLL',
         'learning-rate': LR,
         'seed': SEED,
         'dataset': DATA_NAME,
@@ -75,7 +75,7 @@ for SEED in [1225, 1337, 2020, 6021991]:
         if val_loss['valid_ER'] <= best_val_loss:
             best_val_loss = val_loss['valid_ER']
             best_e = e
-            DNDT.save_model(model, optimizer, state, save_dir, epoch=e, **val_loss)
+            NeuralDecisionForest.save_model(model, optimizer, state, save_dir, epoch=e, **val_loss)
             no_improv = 0
 
         # reduce learning rate if needed
@@ -87,7 +87,7 @@ for SEED in [1225, 1337, 2020, 6021991]:
     t1 = time.time()
     print("best validation loss (epoch {}): {}\n".format(best_e, best_val_loss))
 
-    model = DNDT.load_model(save_dir)
+    model = NeuralDecisionForest.load_model(save_dir)
 
     t2 = time.time()
     test_loss = evaluate(testloader, model, {'test_ER': eval_criterion})
