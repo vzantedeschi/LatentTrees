@@ -12,17 +12,17 @@ from src.utils import deterministic
 DATA_NAME = sys.argv[1]
 WORKERS = int(sys.argv[2])
 
-ROUNDS = 10000
+ROUNDS = 5000
 SEED = 1337
 
 if DATA_NAME in ["MICROSOFT", "YEAR", "YAHOO"]:
     data = Dataset(DATA_NAME, normalize=True, quantile_transform=True, normalize_target=True)
-    objective = 'reg:squarederror'
+    obj = 'reg:squarederror'
     metric = 'rmse'
 
 else:
     data = Dataset(DATA_NAME, normalize=True, quantile_transform=True)
-    objective = 'reg:logistic'
+    obj = 'reg:logistic'
     metric = 'error'
 
 dtrain = xgb.DMatrix(data.X_train, label=data.y_train)
@@ -46,7 +46,7 @@ def objective(trial):
     GAMMA = trial.suggest_loguniform("GAMMA", 1e-16, 1e2)
 
     param = {
-        'objective': objective,
+        'objective': obj,
         'nthread': WORKERS,
         'eval_metric': metric,
         'eta': ETA,
@@ -73,7 +73,10 @@ def objective(trial):
         best_loss = np.mean((data.y_valid - ypred) ** 2) * data.std_y**2
 
     else:
-        best_loss = (data.y_valid != ypred).sum()
+        ypred[ypred < 0.5] = 0
+        ypred[ypred >= 0.5] = 1.
+        
+        best_loss = (data.y_valid != ypred).mean()
 
     print("Best step: ", bst.best_ntree_limit)
     print("Best Val Loss: %0.5f" % (best_loss))
