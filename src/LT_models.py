@@ -132,7 +132,7 @@ class LatentTree(torch.nn.Module):
         self.pruned = pruned
         
         if pruned:
-            self.eta = torch.nn.Parameter(torch.rand(self.bst.nb_nodes))
+            self.eta = torch.nn.Parameter(torch.rand(self.bst.nb_nodes) * 2 - 1)
 
     def forward(self, x):
         q = self._compute_q(x)

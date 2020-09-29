@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 
+import torch.nn.functional as F
 from torch.optim.lr_scheduler import MultiplicativeLR
 
 from tqdm import tqdm
@@ -96,11 +97,11 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
 
             y_pred = model(t_x).squeeze()
             
-            loss = criterion(y_pred, t_y.float()) / len(t_x)
+            loss = criterion(y_pred, t_y) / len(t_x)
 
         if reg > 0:
 
-            obj = loss + reg * model.latent_tree.bst.nb_nodes * torch.norm(model.latent_tree.eta, p=norm)
+            obj = loss + reg * torch.norm(model.latent_tree.eta, p=norm)
             train_obj += obj.detach().cpu().numpy()
 
             if prog_bar:
@@ -118,7 +119,7 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
         optimizer.step()
         
         if monitor:
-            monitor.write(model, i + last_iter, train={"Loss": loss.detach()})
+            monitor.write(model, i + last_iter, report_tree=True, train={"Loss": loss.detach()})
             
 def evaluate(dataloader, model, criteria, epoch=None, monitor=None, contrastive=False, device=None):
 
@@ -167,3 +168,67 @@ def evaluate(dataloader, model, criteria, epoch=None, monitor=None, contrastive=
 
     return {k: loss.cpu().numpy() / num_points for k, loss in total_losses.items()}
 
+def train_ndf(dataloader, model, optimizer, epoch, jointly_training):
+
+    # Update \Pi
+    if not jointly_training:
+        print("Epoch %d : Two Stage Learing - Update PI" % (epoch))
+        # prepare feats
+        cls_onehot = torch.eye(opt.n_class)
+        feat_batches = []
+        target_batches = []
+
+        with torch.no_grad():
+            for batch_idx, (data, target) in enumerate(dataloader):
+
+                data = Variable(data)
+                # Get feats
+                feats = model.feature_layer(data)
+                feats = feats.view(feats.size()[0], -1)
+                feat_batches.append(feats)
+                target_batches.append(cls_onehot[target])
+
+            # Update \Pi for each tree
+            for tree in model.forest.trees:
+                mu_batches = []
+                for feats in feat_batches:
+                    mu = tree(feats)  # [batch_size,n_leaf]
+                    mu_batches.append(mu)
+                for _ in range(20):
+                    new_pi = torch.zeros((tree.n_leaf, tree.n_class))  # Tensor [n_leaf,n_class]
+                    if opt.cuda:
+                        new_pi = new_pi.cuda()
+                    for mu, target in zip(mu_batches, target_batches):
+                        pi = tree.get_pi()  # [n_leaf,n_class]
+                        prob = tree.cal_prob(mu, pi)  # [batch_size,n_class]
+
+                        # Variable to Tensor
+                        pi = pi.data
+                        prob = prob.data
+                        mu = mu.data
+
+                        _target = target.unsqueeze(1)  # [batch_size,1,n_class]
+                        _pi = pi.unsqueeze(0)  # [1,n_leaf,n_class]
+                        _mu = mu.unsqueeze(2)  # [batch_size,n_leaf,1]
+                        _prob = torch.clamp(prob.unsqueeze(1), min=1e-6, max=1.)  # [batch_size,1,n_class]
+
+                        _new_pi = torch.mul(torch.mul(_target, _pi), _mu) / _prob  # [batch_size,n_leaf,n_class]
+                        new_pi += torch.sum(_new_pi, dim=0)
+
+                    new_pi = F.softmax(Variable(new_pi), dim=1).data
+                    tree.update_pi(new_pi)
+
+    # Update \Theta
+    model.train()
+
+    for data, target in tqdm(dataloader):
+
+        optimizer.zero_grad()
+
+        output = model(data)
+        
+        loss = F.nll_loss(torch.log(output), target)
+
+        loss.backward()
+
+        optimizer.step()
