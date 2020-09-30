@@ -41,7 +41,7 @@ def objective(trial):
 
     DEPTH = trial.suggest_int("DEPTH", 2, 6)
     FEAT_RATE = trial.suggest_uniform('FEAT_RATE', 0, 1)
-    JOINT = trial.suggest_categorical('CUTS', [True, False])
+    JOINT = True
     print(f'DEPTH={DEPTH}, FEAT_RATE={FEAT_RATE}, JOINT={JOINT}')
 
     save_dir = root_dir / f"trees={NUM_TREES}/depth={DEPTH}/feat-rate={FEAT_RATE}/joint={JOINT}/seed={SEED}"
@@ -86,9 +86,9 @@ def objective(trial):
         # reduce learning rate if needed
         lr_scheduler.step(val_loss['valid_ER'])
 
-        trial.report(val_loss['ER'], e)
+        trial.report(val_loss['valid_ER'], e)
         # Handle pruning based on the intermediate value.
-        if trial.should_prune() or np.isnan(val_loss['ER']):
+        if trial.should_prune() or np.isnan(val_loss['valid_ER']):
             raise optuna.TrialPruned()
 
         if no_improv == 10:
@@ -102,7 +102,7 @@ if __name__ == "__main__":
 
     # Set up the median stopping rule as the pruning condition.
     study = optuna.create_study(study_name=f"ndf-{DATA_NAME}", pruner=optuna.pruners.MedianPruner())
-    study.optimize(objective, n_trials=100)
+    study.optimize(objective, n_trials=10)
 
     print(study.best_params, study.best_value)
     df = study.trials_dataframe(attrs=('number', 'value', 'params', 'state'))

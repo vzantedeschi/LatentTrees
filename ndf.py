@@ -17,14 +17,14 @@ from src.utils import deterministic
 
 DATA_NAME = sys.argv[1]
 WORKERS = int(sys.argv[2])
-DEPTH = 8
-FEAT_RATE = 0.9
+DEPTH = 6
+FEAT_RATE = 0.847924044521007
 JOINT = True
 NUM_TREES = 1
 
 LR = 0.001
 BATCH_SIZE = 512 
-EPOCHS = 1
+EPOCHS = 100
 
 data = Dataset(DATA_NAME, normalize=True, quantile_transform=True)
 in_features = data.X_train.shape[1]

@@ -265,6 +265,7 @@ class NeuralDecisionForest(torch.nn.Module):
         self.params = locals()
         del self.params['self']
         
+        self.num_classes = num_classes
         self.feature_layer = torch.nn.Linear(in_size, 1024)
         self.forest = Forest(n_tree=num_trees, tree_depth=tree_depth, n_in_feature=1024,
                         tree_feature_rate=tree_feature_rate, n_class=num_classes,
@@ -282,6 +283,9 @@ class NeuralDecisionForest(torch.nn.Module):
 
         return torch.argmax(prob, axis=1).detach()
 
+    def count_parameters(self):
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+    
     @classmethod
     def load_model(cls, load_dir, add_load=None):
         

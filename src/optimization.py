@@ -174,14 +174,13 @@ def train_ndf(dataloader, model, optimizer, epoch, jointly_training):
     if not jointly_training:
         print("Epoch %d : Two Stage Learing - Update PI" % (epoch))
         # prepare feats
-        cls_onehot = torch.eye(opt.n_class)
+        cls_onehot = torch.eye(model.num_classes)
         feat_batches = []
         target_batches = []
 
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(dataloader):
 
-                data = Variable(data)
                 # Get feats
                 feats = model.feature_layer(data)
                 feats = feats.view(feats.size()[0], -1)
@@ -196,13 +195,10 @@ def train_ndf(dataloader, model, optimizer, epoch, jointly_training):
                     mu_batches.append(mu)
                 for _ in range(20):
                     new_pi = torch.zeros((tree.n_leaf, tree.n_class))  # Tensor [n_leaf,n_class]
-                    if opt.cuda:
-                        new_pi = new_pi.cuda()
                     for mu, target in zip(mu_batches, target_batches):
                         pi = tree.get_pi()  # [n_leaf,n_class]
                         prob = tree.cal_prob(mu, pi)  # [batch_size,n_class]
 
-                        # Variable to Tensor
                         pi = pi.data
                         prob = prob.data
                         mu = mu.data
@@ -215,7 +211,7 @@ def train_ndf(dataloader, model, optimizer, epoch, jointly_training):
                         _new_pi = torch.mul(torch.mul(_target, _pi), _mu) / _prob  # [batch_size,n_leaf,n_class]
                         new_pi += torch.sum(_new_pi, dim=0)
 
-                    new_pi = F.softmax(Variable(new_pi), dim=1).data
+                    new_pi = F.softmax(new_pi, dim=1).data
                     tree.update_pi(new_pi)
 
     # Update \Theta
