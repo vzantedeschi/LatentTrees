@@ -20,13 +20,7 @@ class OptTree():
     def train(self, x, y):
 
         dataframe = pd.DataFrame(data=np.hstack((x, y[:, None])), columns=self.in_columns + self.out_columns)
-        self.optree.train(dataframe, train_method="mio", show_training_process=self.verbose)
-
-        self.A = np.zeros((self.bst.nb_split, self.in_size + 1))
-
-        for t in self.bst.split_nodes:
-            self.A[t, :-1] = np.array(self.optree.a[t+1])
-            self.A[t, -1] = -self.optree.b[t+1]
+        self.optree.train(dataframe, train_method="ls", show_training_process=self.verbose)
 
     def predict(self, x):
 

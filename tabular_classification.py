@@ -13,6 +13,8 @@ from src.optimization import train_stochastic, evaluate
 from src.datasets import Dataset, TorchDataset
 from src.utils import deterministic
 
+import time
+
 TREE_DEPTH=4
 REG=1.4837286400170702
 MLP_LAYERS=5
@@ -27,7 +29,7 @@ pruning = REG > 0
 data = Dataset(DATA_NAME, normalize=True, quantile_transform=True, seed=459107)
 print('classes', np.unique(data.y_test))
 
-test_losses = []
+test_losses, train_times, test_times = [], [], []
 for SEED in [1225, 1337, 2020, 6021991]:
     deterministic(SEED)
 
@@ -64,6 +66,7 @@ for SEED in [1225, 1337, 2020, 6021991]:
     best_val_loss = float("inf")
     best_e = -1
     no_improv = 0
+    t0 = time.time()
     for e in range(EPOCHS):
         train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
 
@@ -79,15 +82,20 @@ for SEED in [1225, 1337, 2020, 6021991]:
 
         if no_improv == EPOCHS // 5:
             break
-
+    t1 = time.time()
     monitor.close()
     print("best validation error rate (epoch {}): {}\n".format(best_e, best_val_loss))
 
     model = LTBinaryClassifier.load_model(save_dir)
+    t2 = time.time()
     test_loss = evaluate(testloader, model, {'ER': eval_criterion})
     print("test error rate (model of epoch {}): {}\n".format(best_e, test_loss['ER']))
-
+    t3 = time.time()
     test_losses.append(test_loss['ER'])
+    train_times.append(t1 - t0)
+    test_times.append(t3 - t2)
 
 print(np.mean(test_losses), np.std(test_losses))
 np.save(save_dir / '../test-losses.npy', test_losses)
+print("Avg train time", np.mean(train_times))
+print("Avg test time", np.mean(test_times))
