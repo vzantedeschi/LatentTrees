@@ -1,4 +1,5 @@
 import sys
+import numpy as np
 
 from sklearn.metrics import accuracy_score
 
@@ -11,34 +12,40 @@ import time
 DATA_NAME = sys.argv[1]
 DEPTH = 8
 
-SEED = 1337
-deterministic(SEED)
-
 data = Dataset(DATA_NAME, normalize=True, quantile_transform=True)
 metric = lambda x, y: 1 - accuracy_score(x, y)
 
-t0 = time.time()
-model = OptTree(DEPTH, data.X_train.shape[1])
-model = model.fit(data.X_train, data.y_train)
-t1 = time.time()
+test_losses, train_times, test_times = [], [], []
+for SEED in [1225, 1337, 2020, 6021991]:
+    
+    deterministic(SEED)
 
-print(f"Training time: {t1 - t0}s")
+    idx = np.random.choice(len(data.X_train), 50_000, replace=False)
 
-ypred = model.predict(data.X_train)
-loss_train = metric(data.y_train, ypred)
-print("Train:", loss_train)
+    t0 = time.time()
+    model = OptTree(DEPTH, data.X_train.shape[1], verbose=True)
+    model.train(data.X_train[idx], data.y_train[idx])
+    t1 = time.time()
+    
+    train_times.append(t1 - t0)
 
-ypred = model.predict(data.X_valid)
-loss_valid = metric(data.y_valid, ypred)
-print("Validation:", loss_valid)
+    ypred = model.predict(data.X_train)
+    loss_train = metric(data.y_train, ypred)
 
-t2 = time.time()
+    ypred = model.predict(data.X_valid)
+    loss_valid = metric(data.y_valid, ypred)
 
-ypred = model.predict(data.X_test)
-loss_test = metric(data.y_test, ypred)
+    t2 = time.time()
 
-t3 = time.time()
-print("Test: %0.5f" % (loss_test))
-print(f"Inference time: {t3 - t2}s")
+    ypred = model.predict(data.X_test)
+    loss_test = metric(data.y_test, ypred)
+    test_losses.append(loss_test)
+    t3 = time.time()
 
-print(f"Tree depth {DEPTH}, num nodes {model.tree_.node_count}, num leaves {model.get_n_leaves()}, num parameters {sum(model.tree_.feature > -1) * 2}")
+    test_times.append(t3 - t2)
+
+print("Test: %0.5f %0.5f" % (np.mean(test_losses), np.std(test_losses)))
+print(f"Train time: {np.mean(train_times)}s")
+print(f"Inference time: {np.mean(test_times)}s")
+
+print(f"Tree depth {DEPTH}, num nodes {model.bst.nb_nodes}, num leaves {model.bst.nb_leaves}, num parameters {model.bst.nb_split * (model.in_size + 1)}")
