@@ -33,7 +33,7 @@ class Dataset:
     Code adapted from https://github.com/Qwicen/node/blob/master/lib/data.py .
 
     """
-    def __init__(self, dataset, data_path='./DATA', normalize=False, normalize_target=False, quantile_transform=False, quantile_noise=1e-3, in_features=None, out_features=None, flatten=False, **kwargs):
+    def __init__(self, dataset, data_path=Path('./DATA'), normalize=False, normalize_target=False, quantile_transform=False, quantile_noise=1e-3, in_features=None, out_features=None, flatten=False, **kwargs):
         """
         Dataset is a dataclass that contains all training and evaluation data required for an experiment
         :param dataset: a pre-defined dataset name (see DATSETS) or a custom dataset
@@ -44,7 +44,7 @@ class Dataset:
         """
 
         if dataset in REAL_DATASETS:
-            data_dict = REAL_DATASETS[dataset](Path(data_path) / dataset, **kwargs)
+            data_dict = REAL_DATASETS[dataset](data_path / dataset, **kwargs)
 
             self.X_train = data_dict['X_train']
             self.y_train = data_dict['y_train']

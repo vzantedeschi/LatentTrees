@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from networkx.drawing.nx_agraph import graphviz_layout
 
-from src.baselines import OptTree
 from src.datasets import Dataset
 from src.LT_models import LTBinaryClassifier, LTRegressor
 from src.metrics import LT_dendrogram_purity
@@ -69,16 +68,6 @@ def main(cfg):
         # save model
         model.save_model(optimizer, dict(cfg), SAVE_DIR)
         bst = model.latent_tree.bst
-
-    # baseline: Optimal Classification Trees https://www.mit.edu/~dbertsim/papers/Machine%20Learning%20under%20a%20Modern%20Optimization%20Lens/Optimal_classification_trees_MachineLearning.pdf
-    elif cfg.model.TYPE == 'OPTREE':
-
-        model = OptTree(bst_depth=cfg.model.BST_DEPTH, dim=2, N_min=1)
-        model.train(data.X, data.Y)
-        bst = model.bst
-
-    else:
-        raise NotImplementedError()
 
     # ---------------------------------------------------------------------- PLOT PREDICTIONS
 

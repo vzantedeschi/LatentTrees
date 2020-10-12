@@ -63,10 +63,11 @@ if __name__ == "__main__":
     SEED = 2020
     np.random.seed(SEED)
 
-    times_exact = np.zeros((9, 6))
-    times_cvx = np.zeros((9, 6))
+    # fix n=100
+    times_exact = np.zeros(7)
+    times_cvx = np.zeros(7)
 
-    for depth in tqdm.tqdm(range(1, 10), desc="depth"):
+    for depth in tqdm.tqdm(range(7), desc="depth"):
 
         bst = BinarySearchTree(depth)
         parents = [bst.parent(t) for t in bst.nodes]
@@ -74,29 +75,58 @@ if __name__ == "__main__":
         etas = make_edge_cases(bst.nb_nodes)
         t_etas = [torch.from_numpy(eta).float() for eta in etas]
 
-        for n in tqdm.tqdm(range(6), desc="number of points"):
+        num_points = 100
+        qs = np.random.uniform(-1, 1, size=(num_points, bst.nb_nodes))
 
-            num_points = 10**n
-            qs = np.random.uniform(-1, 1, size=(num_points, bst.nb_nodes))
+        t_qs = torch.from_numpy(qs).float()
 
-            t_qs = torch.from_numpy(qs).float()
+        for eta, t_eta in zip(etas, t_etas):
 
-            # for t in range(1, 7):
-            #     qs[:, t] = np.minimum(qs[:, t], qs[:, parents[t]])
+            t0 = time.time()
+            d_expected = solve_qp(parents, eta, qs)
+            t1 = time.time()
+            d_obtained = pruning_qp(t_qs, t_eta)
+            t2 = time.time()
 
-            for eta, t_eta in zip(etas, t_etas):
-
-                t0 = time.time()
-                d_expected = solve_qp(parents, eta, qs)
-                t1 = time.time()
-                d_obtained = pruning_qp(t_qs, t_eta)
-                t2 = time.time()
-
-                times_exact[depth-1, n] += t2 - t1
-                times_cvx[depth-1, n] += t1 - t0
+            times_exact[depth] += t2 - t1
+            times_cvx[depth] += t1 - t0
 
     times_exact /= len(etas)
     times_cvx /= len(etas)
 
-    np.save("cvx_times.npy", times_cvx)
-    np.save("exact_times.npy", times_exact)
+    np.save("cvx_times_n100.npy", times_cvx)
+    np.save("exact_times_n100.npy", times_exact)
+
+    # fix D=3
+    times_exact = np.zeros(5)
+    times_cvx = np.zeros(5)
+
+    depth = 3
+    bst = BinarySearchTree(depth)
+    parents = [bst.parent(t) for t in bst.nodes]
+
+    etas = make_edge_cases(bst.nb_nodes)
+    t_etas = [torch.from_numpy(eta).float() for eta in etas]
+
+    for n in tqdm.tqdm(range(5), desc="number of points"):
+
+        num_points = 10**n
+        qs = np.random.uniform(-1, 1, size=(num_points, bst.nb_nodes))
+        t_qs = torch.from_numpy(qs).float()
+
+        for eta, t_eta in zip(etas, t_etas):
+
+            t0 = time.time()
+            d_expected = solve_qp(parents, eta, qs)
+            t1 = time.time()
+            d_obtained = pruning_qp(t_qs, t_eta)
+            t2 = time.time()
+
+            times_exact[n] += t2 - t1
+            times_cvx[n] += t1 - t0
+
+    times_exact /= len(etas)
+    times_cvx /= len(etas)
+
+    np.save("cvx_times_D3.npy", times_cvx)
+    np.save("exact_times_D3.npy", times_exact)

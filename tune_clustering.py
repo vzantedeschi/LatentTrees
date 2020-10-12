@@ -25,12 +25,7 @@ LR = 0.001
 EPOCHS = 100
 
 # selecting input and output features for self-supervised training
-if DATA_NAME == "DIGITS":
-    out_features = [20, 35, 50]
-    in_features = list(set(range(64)) - set(out_features))
-    BATCH_SIZE = 32
-
-elif DATA_NAME == "COVTYPE":
+if DATA_NAME == "COVTYPE":
     out_features = [3, 4]
     in_features = list(set(range(54)) - set(out_features))
     BATCH_SIZE = 512
