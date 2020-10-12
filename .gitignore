@@ -1,0 +1,10 @@
+**/__pycache__/
+results/
+runs*/
+outputs/
+**/*.pyc
+**/*.zip
+**/*.json
+.eggs/
+build/
+DATA/
