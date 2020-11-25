@@ -80,6 +80,9 @@ class LatentTree(torch.nn.Module):
         self.bst = BinarySearchTree(bst_depth)      
 
         self.split_func = split_func
+        self.bias = torch.nn.Parameter(torch.zeros(self.bst.nb_split), requires_grad=True)
+        self.bias_init = False
+
         if split_func == 'linear':
             
             self.in_size = np.prod(dim)
@@ -107,6 +110,11 @@ class LatentTree(torch.nn.Module):
             self.eta = torch.nn.Parameter(torch.rand(self.bst.nb_nodes) * 2 - 1)
 
     def forward(self, x):
+
+        if not self.bias_init:
+            self._init_bias(x)
+            self.bias_init = True
+
         q = self._compute_q(x)
         z = torch.clamp(q, 0, 1)
 
@@ -129,19 +137,42 @@ class LatentTree(torch.nn.Module):
     def _compute_q(self, x):
 
         # compute tree paths q
-        XA = self.split(x)
+        s = self.split(x) + self.bias
+        act_s = self.act(s)
+
         q = torch.ones((len(x), self.bst.nb_nodes), device=x.device)
 
         # upper bound children's q to parent's q        
         # trick to avoid inplace operations involving A
-        q[:, self.bst.desc_left] = torch.min(q[:, self.bst.split_nodes], XA[:, self.bst.split_nodes])
-        q[:, self.bst.desc_right] = torch.min(q[:, self.bst.split_nodes], -XA[:, self.bst.split_nodes])
+        q[:, self.bst.desc_left] = torch.min(q[:, self.bst.split_nodes], act_s[:, self.bst.split_nodes])
+        q[:, self.bst.desc_right] = torch.min(q[:, self.bst.split_nodes], -act_s[:, self.bst.split_nodes])
 
         for _ in range(self.bst.depth):
             q[:, self.bst.desc_left] = torch.min(q[:, self.bst.desc_left], q[:, self.bst.split_nodes])
             q[:, self.bst.desc_right] = torch.min(q[:, self.bst.desc_right], q[:, self.bst.split_nodes])
 
         return q
+
+    def _init_bias(self, x):
+
+        s = self.split(x)
+        bias = -s.mean(0)
+
+        node_masks = [np.array([True] * len(x))] # set of points assigned to each node
+        for l in range(1, self.bst.nb_split, 2): # loop over left nodes
+
+            r = l + 1 # right node
+            p = self.bst.parent(l) # parent node
+
+            s_p = (s[:, p] + bias[p]).detach().numpy() # parent's projections
+
+            node_masks.append(node_masks[p] & (s_p > 0)) # points going to the left node
+            node_masks.append(node_masks[p] & (s_p < 0)) # points going to the rigth node
+
+            bias[l] = -s[node_masks[l], l].mean()
+            bias[r] = -s[node_masks[r], r].mean()
+
+        self.bias = torch.nn.parameter.Parameter(bias, requires_grad=True)
 
 # ------------------------------------------------------------------------------- NN MODELS
 
@@ -265,6 +296,8 @@ class LTModel(torch.nn.Module):
 
             if 'checkpoint' in add_load.keys():
                 add_load['checkpoint'] = checkpoint
+
+        model.latent_tree.bias_init = True 
         
         return model
   
