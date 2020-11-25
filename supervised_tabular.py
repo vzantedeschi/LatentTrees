@@ -26,14 +26,29 @@ def main(cfg):
     cwd = Path(hydra.utils.get_original_cwd())
 
     if cfg.DATA_NAME in clf_datasets:
+        
         data = Dataset(cfg.DATA_NAME, data_path=cwd / "DATA", normalize=True, seed=459107)
         print('classes', np.unique(data.y_test))
 
+        model_cls = LTBinaryClassifier
+
+        # init loss
+        criterion = BCELoss(reduction="sum")
+        # evaluation criterion => error rate
+        eval_criterion = lambda x, y: (x != y).sum()
+
     else:
+        
         data = Dataset(cfg.DATA_NAME, data_path=cwd / "DATA", normalize=True, normalize_target=True)
         in_features = data.X_train.shape[1]
         out_features = 1
         print("target mean = %.5f, std = %.5f" % (data.mean_y, data.std_y))
+
+        model_cls = LTRegressor        
+
+        # init loss
+        criterion = MSELoss(reduction="sum")
+        eval_criterion = lambda x, y: criterion(x, y) * data.std_y**2
 
     state = {
         'batch-size': cfg.training.BATCH_SIZE,
@@ -48,7 +63,7 @@ def main(cfg):
     for SEED in cfg.training.SEEDS:
         deterministic(SEED)
 
-        save_dir = cwd / "results/{cfg.DATA_NAME}/seed={cfg.training.SEED}/"
+        save_dir = cwd / f"results/{cfg.DATA_NAME}/seed={SEED}/"
         save_dir = Path(save_dir)
         save_dir.mkdir(parents=True, exist_ok=True)
 
@@ -60,23 +75,14 @@ def main(cfg):
 
         if cfg.DATA_NAME in clf_datasets:
 
-            model_cls = LTBinaryClassifier
             model = LTBinaryClassifier(cfg.model.TREE_DEPTH, data.X_train.shape[1], pruned=pruning, linear=cfg.model.LINEAR, layers=cfg.model.MLP_LAYERS, dropout=cfg.model.DROPOUT)
 
             state['loss-function'] = 'BCE'
-            # init loss
-            criterion = BCELoss(reduction="sum")
-            # evaluation criterion => error rate
-            eval_criterion = lambda x, y: (x != y).sum()
 
         else:
             
-            model_cls = LTRegressor        
             model = LTRegressor(cfg.model.TREE_DEPTH, in_features, out_features, pruned=pruning, linear=False, layers=cfg.model.MLP_LAYERS, dropout=cfg.model.DROPOUT)
 
-            # init loss
-            criterion = MSELoss(reduction="sum")
-            eval_criterion = lambda x, y: criterion(x, y) * data.std_y**2
             state['loss-function'] = 'MSE'
 
         # init optimizer
@@ -118,17 +124,17 @@ def main(cfg):
 
         model = model_cls.load_model(save_dir)
         t2 = time.time()
-        test_loss = evaluate(testloader, model, {'val': eval_criterion})
-        print("test error rate (model of epoch {}): {}\n".format(best_e, test_loss['val']))
+        test_loss = evaluate(testloader, model, {'test': eval_criterion})
+        print("test error rate (model of epoch {}): {}\n".format(best_e, test_loss['test']))
         t3 = time.time()
-        test_losses.append(test_loss['val'])
+        test_losses.append(test_loss['test'])
         train_times.append(t1 - t0)
         test_times.append(t3 - t2)
 
-    print(np.mean(test_losses), np.std(test_losses))
-    np.save(save_dir / '../test-losses.npy', test_losses)
+    print(f"Test loss: {np.mean(test_losses)} +- {np.std(test_losses)}")
     print("Avg train time", np.mean(train_times))
     print("Avg test time", np.mean(test_times))
+    np.save(save_dir / '../test-losses.npy', test_losses)
 
 if __name__ == "__main__":
     main()
