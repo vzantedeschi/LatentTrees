@@ -10,7 +10,7 @@ training:
   LR: 0.5
   ITER: 1e4
   REG: 0
-  TWO_PHASED: True
+  TWO_PHASED: False
 
 dataset:
   DISTR: xor # or swissroll

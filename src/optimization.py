@@ -73,15 +73,15 @@ def train_stochastic(dataloader, model, optimizer, criterion, epoch, reg=1, norm
     for i, batch in enumerate(pbar):
 
         optimizer.zero_grad()
+    
+        t_x, t_y = batch
 
-	t_x, t_y = batch
+        if t_y.dim() > 2: # predictors support only flatten output atm
+            t_y = t_y.view(len(t_y), -1)
 
-	if t_y.dim() > 2: # predictors support only flatten output atm
-	    t_y = t_y.view(len(t_y), -1)
-
-	y_pred = model(t_x).squeeze()
-	    
-	loss = criterion(y_pred, t_y) / len(t_x)
+        y_pred = model(t_x).squeeze()
+            
+        loss = criterion(y_pred, t_y) / len(t_x)
 
         if reg > 0:
 
@@ -117,19 +117,19 @@ def evaluate(dataloader, model, criteria, epoch=None, monitor=None):
         t_x, t_y = batch
     
         if device:
-	    t_x = t_x.to(device)
-	    t_y = t_j.to(device)
+            t_x = t_x.to(device)
+            t_y = t_j.to(device)
     
         if t_y.dim() > 2: # predictors support only flatten output atm
-	    t_y = t_y.view(len(t_y), -1)
+            t_y = t_y.view(len(t_y), -1)
     
         num_points += len(t_x)
 
         y_pred = model.predict(t_x).squeeze()
 
         for k in criteria.keys():
-	    loss = criteria[k](y_pred, t_y)
-	    total_losses[k] += loss.detach()
+            loss = criteria[k](y_pred, t_y)
+            total_losses[k] += loss.detach()
 
     if monitor:
         monitor.write(model, epoch, val={k: loss / num_points for k, loss in total_losses.items()})

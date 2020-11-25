@@ -83,24 +83,18 @@ class LatentTree(torch.nn.Module):
         self.bias = torch.nn.Parameter(torch.zeros(self.bst.nb_split), requires_grad=True)
         self.bias_init = False
 
-        if split_func == 'linear':
-            
-            self.in_size = np.prod(dim)
+        self.in_size = np.prod(dim)
+        self.split = torch.nn.Sequential(
+                torch.nn.Flatten(),
+                torch.nn.Linear(self.in_size, self.bst.nb_split)
+            )
 
-            self.split = torch.nn.Sequential(
-                    torch.nn.Flatten(),
-                    torch.nn.Linear(self.in_size, self.bst.nb_split)
-                )
+        if split_func == 'linear':
+            self.act = torch.nn.Identity()
 
         elif split_func == 'elu':
-
-            self.in_size = np.prod(dim)
-
-            self.split = torch.nn.Sequential(
-                    torch.nn.Flatten(),
-                    torch.nn.Linear(self.in_size, self.bst.nb_split),
-                    torch.nn.ELU()
-                )
+            self.act = torch.nn.ELU()
+            
         else:
             raise NotImplementedError
         
