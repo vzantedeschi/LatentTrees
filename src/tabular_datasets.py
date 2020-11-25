@@ -360,3 +360,27 @@ def fetch_CLICK(path, valid_size=100_000, seed=None, **kwargs):
         X_valid=X_val.values.astype('float32'), y_valid=y_val,
         X_test=X_test.values.astype('float32'), y_test=y_test
     )
+
+def fetch_MUSHROOMS(path, valid_size=0.2, test_size=0.2, seed=None):
+
+    path = Path(path)
+    data_path = path / 'agaricus-lepiota.data'
+
+    if not data_path.exists():
+        path.mkdir(parents=True, exist_ok=True)
+
+        download('https://archive.ics.uci.edu/ml/machine-learning-databases/mushroom/agaricus-lepiota.data', data_path)
+
+    data = pd.read_csv(data_path, names=np.arange(23))
+    encoder = OrdinalEncoder(return_df=False)
+    data = encoder.fit_transform(data)
+    
+    X, Y = (data[:, 1:]).astype(np.float32), (data[:, 0] - 1).astype(int)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
+
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=seed)
+
+    return dict(
+        X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
+    )

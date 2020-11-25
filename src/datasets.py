@@ -19,6 +19,7 @@ REAL_DATASETS = {
     'COVTYPE': fetch_COVTYPE,
     'ALOI': fetch_ALOI,
     'DIGITS': fetch_DIGITS,
+    'MUSHROOMS': fetch_MUSHROOMS,
 }
 
 TOY_DATASETS = [
