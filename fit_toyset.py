@@ -14,13 +14,13 @@ from src.datasets import Dataset
 from src.LT_models import LTBinaryClassifier, LTRegressor
 from src.metrics import LT_dendrogram_purity
 from src.monitors import MonitorTree
-from src.optimization import train_batch, twophased_train_batch
+from src.optimization import train_batch
 from src.utils import deterministic
 
 @hydra.main(config_path='config/default-xor.yaml')
 def main(cfg):
 
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.DISTR}/{cfg.model.TYPE}/twophased={cfg.training.TWO_PHASED}/split={cfg.model.SPLIT}/comp={cfg.model.COMP}/depth={cfg.model.BST_DEPTH}/reg={cfg.training.REG}/seed={cfg.training.SEED}/"
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.DISTR}/{cfg.model.TYPE}/split={cfg.model.SPLIT}/comp={cfg.model.COMP}/depth={cfg.model.BST_DEPTH}/reg={cfg.training.REG}/seed={cfg.training.SEED}/"
     SAVE_DIR = Path(SAVE_DIR)
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -55,10 +55,7 @@ def main(cfg):
 
         monitor = MonitorTree(cfg.training.REG > 0, SAVE_DIR)
 
-        if cfg.training.TWO_PHASED:
-            twophased_train_batch(data.X, data.Y, model, optimizer, criterion, nb_iter=cfg.training.ITER, monitor=monitor)
-        else:
-            train_batch(data.X, data.Y, model, optimizer, criterion, nb_iter=cfg.training.ITER, monitor=monitor)
+        train_batch(data.X, data.Y, model, optimizer, criterion, nb_iter=cfg.training.ITER, monitor=monitor)
 
         monitor.close()
         # save model
