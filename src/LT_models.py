@@ -6,102 +6,28 @@ from pathlib import Path
 from src.trees import BinarySearchTree
 from src.monitors import MonitorTree
 from src.qp import pruning_qp
-from src.utils import concat_func, freezed_concat_func, none_func
-
-# ----------------------------------------------------------------------- REGRESSION
-
-class Linear(torch.nn.Module):
-    
-    def __init__(self, in_size, out_size):
-        
-        super(Linear, self).__init__()
-
-        self.linear = torch.nn.Linear(in_size, out_size)     
-
-    def forward(self, x):
-        
-        return self.linear(x)
-
-class MLP(torch.nn.Module):
-    
-    def __init__(self, in_size, out_size, layers=2, dropout=0., **kwargs):
-        
-        super(MLP, self).__init__()
-        
-        if layers == 1:
-            units = [(in_size, out_size)]
-        else:
-            units = [(in_size, 64)]
-            for i in range(1, layers - 1):
-                units.append((units[-1][1], units[-1][1] * 2))
-            units.append((units[-1][1], out_size))
-        
-        self.layers = []
-        for i, u in enumerate(units):
-            self.layers.append(torch.nn.Linear(*u))
-            
-            if i < layers - 1: # end the model with a linear layer
-                self.layers.append(torch.nn.ELU())
-                
-                if dropout > 0.:
-                    self.layers.append(torch.nn.Dropout(dropout))
-        
-        self.net = torch.nn.Sequential(*self.layers)
-
-    def forward(self, x):
-        
-        return self.net(x)
-
-class LogisticRegression(torch.nn.Module):
-    
-    def __init__(self, in_size, out_size, linear, **kwargs):
-        
-        super(LogisticRegression, self).__init__()
-
-        if linear:
-            self.net = Linear(in_size, out_size)
-        else:
-            self.net = MLP(in_size, out_size, **kwargs)   
-
-    def forward(self, x):
-
-        y_pred = torch.sigmoid(self.net(x))
-        
-        return y_pred
+from src.utils import *
 
 # ----------------------------------------------------------------------- LATENT TREE LAYER
 
 class LatentTree(torch.nn.Module):
 
-    def __init__(self, bst_depth, dim, pruned=True, split_func='linear'):
+    def __init__(self, bst_depth, dim, reg=0, **split_args):
 
         super(LatentTree, self).__init__()
 
         self.bst = BinarySearchTree(bst_depth)      
 
-        self.split_func = split_func
         self.bias = torch.nn.Parameter(torch.zeros(self.bst.nb_split), requires_grad=True)
         self.bias_init = False
-
-        self.in_size = np.prod(dim)
-        self.split = torch.nn.Sequential(
-                torch.nn.Flatten(),
-                torch.nn.Linear(self.in_size, self.bst.nb_split)
-            )
-
-        if split_func == 'linear':
-            self.act = torch.nn.Identity()
-
-        elif split_func == 'elu':
-            self.act = torch.nn.ELU()
-            
-        else:
-            raise NotImplementedError
         
-        self.pruned = pruned
+        self.act_type = split_args.pop("split_act", "none")
+        self.split_type = split_args.pop("split_func", "linear")
+
+        self.act = act_dict[self.act_type]
+        self.split = split_dict[self.split_type](dim, self.bst.nb_split, **split_args)
         
-        if pruned:
-            self.eta = torch.nn.Parameter(torch.rand(self.bst.nb_nodes) * 2 - 1)
+        self.eta = reg
 
     def forward(self, x):
 
@@ -112,13 +38,14 @@ class LatentTree(torch.nn.Module):
         q = self._compute_q(x)
         z = torch.clamp(q, 0, 1)
 
-        if self.pruned:
-
-            self.d = pruning_qp(q, self.eta)
-            clamped_d = torch.clamp(self.d, 0, 1)
-            z = torch.min(z, clamped_d)
+        if self.eta > 0:
+            # import pdb; pdb.set_trace()
+            self.d = pruning_qp(q.cpu(), self.eta).to(x.device) # pruning runs only on cpu
+            self.d = torch.clamp(self.d, 0, 1) # apply box constraints
+            z = torch.min(z, self.d) # prune tree traversals
 
         self.z = z
+        self.q = q
 
         return z
 
@@ -158,13 +85,16 @@ class LatentTree(torch.nn.Module):
             r = l + 1 # right node
             p = self.bst.parent(l) # parent node
 
-            s_p = (s[:, p] + bias[p]).detach().numpy() # parent's projections
+            s_p = (s[:, p] + bias[p]).cpu().detach().numpy() # parent's projections
 
             node_masks.append(node_masks[p] & (s_p > 0)) # points going to the left node
             node_masks.append(node_masks[p] & (s_p < 0)) # points going to the rigth node
 
-            bias[l] = -s[node_masks[l], l].mean()
-            bias[r] = -s[node_masks[r], r].mean()
+            if sum(node_masks[l]) > 0:
+                bias[l] = -s[node_masks[l], l].mean()
+
+            if sum(node_masks[r]) > 0:
+                bias[r] = -s[node_masks[r], r].mean()
 
         self.bias = torch.nn.parameter.Parameter(bias, requires_grad=True)
 
@@ -172,29 +102,28 @@ class LatentTree(torch.nn.Module):
 
 class LTModel(torch.nn.Module):
 
-    def __init__(self, bst_depth, in_size, pruned, **kwargs):
+    def __init__(self, bst_depth, in_size, reg, **kwargs):
 
         torch.nn.Module.__init__(self)
 
+        comp_func = kwargs.pop('comp_func', 'concatenate')
+
         # init latent tree optimizer (x -> z)
-        if 'split_func' in kwargs:
-            self.latent_tree = LatentTree(bst_depth, in_size, pruned, split_func=kwargs['split_func'])
-        else:
-            self.latent_tree = LatentTree(bst_depth, in_size, pruned)
+        self.latent_tree = LatentTree(bst_depth, in_size, reg, **kwargs)
 
         # init composition function for constructing input for predictor
-        if 'comp_func' in kwargs and kwargs['comp_func'] != "concatenate":
+        if comp_func != "concatenate":
 
-            if kwargs['comp_func'] == "none":
+            if comp_func == "none":
                 self.comp = none_func
-                self.pred_in_size = self.latent_tree.bst.nb_leaves # predictor's input size
+                self.pred_in_size = self.latent_tree.bst.nb_nodes # predictor's input size
 
             else:
                 raise NotImplementedError
 
         else:
             self.comp = concat_func
-            self.pred_in_size = np.prod(in_size) + self.latent_tree.bst.nb_leaves # predictor's input size
+            self.pred_in_size = np.prod(in_size) + self.latent_tree.bst.nb_nodes # predictor's input size
 
     def train(self):
         self.latent_tree.train()
@@ -253,7 +182,7 @@ class LTModel(torch.nn.Module):
 
     def forward(self, X):
 
-        z = self.latent_tree(X)[:, self.latent_tree.bst.leaves]
+        z = self.latent_tree(X)
 
         xz = self.comp(X, z)
 
@@ -262,16 +191,6 @@ class LTModel(torch.nn.Module):
     def predict_bst(self, X):
 
         return self.latent_tree.predict(X)
-
-    def db_distance(self, X):
-
-        if self.latent_tree.split_func == 'linear':
-
-            XA = self.latent_tree.split(X)
-            return (XA / torch.norm(self.latent_tree.split[1].weight, dim=1, p=2))
-        
-        else:
-            raise NotImplementedError
 
     def count_parameters(self):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
@@ -290,9 +209,9 @@ class LTModel(torch.nn.Module):
 
             if 'checkpoint' in add_load.keys():
                 add_load['checkpoint'] = checkpoint
-
-        model.latent_tree.bias_init = True 
         
+        model.latent_tree.bias_init = True
+
         return model
   
     def save_model(self, optimizer, state, save_dir, **kwargs):
@@ -312,9 +231,9 @@ class LTModel(torch.nn.Module):
 
 class LTBinaryClassifier(LTModel):
 
-    def __init__(self, bst_depth, in_size, pruned=True, linear=True, **kwargs):
+    def __init__(self, bst_depth, in_size, reg=0, linear=True, **kwargs):
 
-        super(LTBinaryClassifier, self).__init__(bst_depth, in_size, pruned, **kwargs)
+        super(LTBinaryClassifier, self).__init__(bst_depth, in_size, reg, **kwargs)
 
         self.params = locals()
         del self.params['self']
@@ -332,16 +251,16 @@ class LTBinaryClassifier(LTModel):
 
 class LTClassifier(LTModel):
 
-    def __init__(self, bst_depth, in_size, num_classes, pruned=True, linear=True, **kwargs):
+    def __init__(self, bst_depth, in_size, num_classes, reg=0, linear=True, **kwargs):
 
-        super(LTClassifier, self).__init__(bst_depth, in_size, pruned, **kwargs)
+        super(LTClassifier, self).__init__(bst_depth, in_size, reg, **kwargs)
 
         self.params = locals()
         del self.params['self']
 
         # init predictor ( [x;z]-> y )
         if linear:
-            self.predictor = Linear(self.pred_in_size, num_classes)
+            self.predictor = torch.nn.Linear(self.pred_in_size, num_classes)
         else:
             self.predictor = MLP(self.pred_in_size, num_classes, **kwargs)
 
@@ -354,9 +273,9 @@ class LTClassifier(LTModel):
 
 class LTRegressor(LTModel):
 
-    def __init__(self, bst_depth, in_size, out_size, pruned=True, linear=True, **kwargs):
+    def __init__(self, bst_depth, in_size, out_size, reg=0, linear=True, **kwargs):
 
-        super(LTRegressor, self).__init__(bst_depth, in_size, pruned, **kwargs)
+        super(LTRegressor, self).__init__(bst_depth, in_size, reg, **kwargs)
 
         self.params = locals()
         del self.params['self']
@@ -364,7 +283,7 @@ class LTRegressor(LTModel):
         # init predictor ( [x;z]-> y )
 
         if linear:
-            self.predictor = Linear(self.pred_in_size, np.prod(out_size))
+            self.predictor = torch.nn.Linear(self.pred_in_size, np.prod(out_size))
         else:
             self.predictor = MLP(self.pred_in_size, np.prod(out_size), **kwargs)
 

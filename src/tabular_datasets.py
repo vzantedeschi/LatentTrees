@@ -16,9 +16,10 @@ from sklearn.datasets import load_svmlight_file
 from sklearn.model_selection import train_test_split
 
 from category_encoders import LeaveOneOutEncoder
+from category_encoders.ordinal import OrdinalEncoder
+from pathlib import Path
 
 from src.utils import download
-
 
 def fetch_A9A(path, train_size=None, valid_size=None, test_size=None, **kwargs):
     train_path = os.path.join(path, 'a9a')
@@ -376,6 +377,30 @@ def fetch_MUSHROOMS(path, valid_size=0.2, test_size=0.2, seed=None):
     data = encoder.fit_transform(data)
     
     X, Y = (data[:, 1:]).astype(np.float32), (data[:, 0] - 1).astype(int)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
+
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=seed)
+
+    return dict(
+        X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
+    )
+
+def fetch_TICTACTOE(path, valid_size=0.2, test_size=0.2, seed=None):
+
+    path = Path(path)
+    data_path = path / 'tic-tac-toe.data'
+
+    if not data_path.exists():
+        path.mkdir(parents=True, exist_ok=True)
+
+        download('https://archive.ics.uci.edu/ml/machine-learning-databases/tic-tac-toe/tic-tac-toe.data', data_path)
+
+    data = pd.read_csv(data_path, names=np.arange(10))
+    encoder = OrdinalEncoder(return_df=False)
+    data = encoder.fit_transform(data)
+    
+    X, Y = (data[:, :-1]).astype(np.float32), (data[:, -1] - 1).astype(int)
 
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
 

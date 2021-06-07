@@ -1,7 +1,7 @@
 model:
   TYPE: LT # or OPTREE
-  BST_DEPTH: 2
-  LINEAR: False
+  BST_DEPTH: 3
+  LINEAR: True
   SPLIT: linear
   COMP: concatenate
 
@@ -9,9 +9,9 @@ training:
   SEED: 2020
   LR: 0.5
   ITER: 1e4
-  REG: 0
+  REG: 0.001
   TWO_PHASED: False
 
 dataset:
   DISTR: xor # or swissroll
-  N: 100 # number of training points
+  N: 200 # number of training points

@@ -11,25 +11,23 @@ typedef std::vector<std::pair<int, int>> index_vec;
 /* Store q, argsort(q), eta and accessors to them. */
 class PruningQPData {
 public:
-    PruningQPData(torch::Tensor q_, torch::Tensor eta_)
+    PruningQPData(torch::Tensor q_, const float eta_)
         : n_nodes{q_.size(0)}
         , n_samples{q_.size(1)}
+        , eta_{eta_}
         , q_{q_}
         , q_srt_{q_.argsort(1, true)} // heavy lifting!
-        , eta_{eta_}
         , q{q_.accessor<float, 2>()}
         , q_srt{q_srt_.accessor<long, 2>()}
-        , eta{eta_.accessor<float, 1>()}
     { }
 
     const int64_t n_nodes;
     const int64_t n_samples;
+    const float eta_;
     torch::Tensor q_;
     torch::Tensor q_srt_;
-    torch::Tensor eta_;
     torch::TensorAccessor<float, 2> q;
     torch::TensorAccessor<long, 2> q_srt;
-    torch::TensorAccessor<float, 1> eta;
 };
 
 /* Solution state, for computing backward pass */
@@ -54,9 +52,9 @@ subproblem_init(const PruningQPData& data, const int j) {
     const auto& q_j = data.q[j];
     const auto& q_srt_j = data.q_srt[j];
 
-    float dd = data.eta[j];
+    float dd = 0;
     float dd_init = dd;
-    int denom = 1;
+    float denom = data.eta_;
 
     auto selected_indices = index_vec();
 
@@ -65,12 +63,12 @@ subproblem_init(const PruningQPData& data, const int j) {
         const auto kk = q_srt_j[k];
         const auto qq = q_j[kk];
 
-        if (qq < dd_init) // is this check redundant?
+        if (qq < dd_init - 0.5) // changed new quadratic relaxation
             break;
-        if (dd > (denom * qq))
+        if (dd > denom * (qq + 0.5)) // changed new quadratic relaxation
             break;
 
-        dd += qq;
+        dd += qq + 0.5; // changed new quadratic relaxation
         denom += 1;
         selected_indices.push_back(std::make_pair(j, kk));
     }
@@ -99,7 +97,6 @@ subproblem(
         if (color[j] == c) {
             js.push_back(j);
             ks.push_back(0);
-            dd_init += data.eta[j];
             n_rows += 1;
         }
     }
@@ -107,7 +104,7 @@ subproblem(
     //assert(n_rows >= 1);
 
     auto dd = dd_init;
-    int denom = n_rows;
+    float denom = n_rows * data.eta_;
 
     auto selected_indices = index_vec();
 
@@ -138,12 +135,12 @@ subproblem(
 
         if (jjmax < 0)
             break;
-        if (dd_init > (n_rows * qmax)) // is this check redundant?
+        if (dd_init > n_rows * (qmax + 0.5)) // // changed new quadratic relaxation
             break;
-        if (dd > (denom * qmax))
+        if (dd > denom * (qmax + 0.5)) // changed new quadratic relaxation
             break;
 
-        dd += qmax;
+        dd += qmax + 0.5; // changed new quadratic relaxation
         denom += 1;
         ks[jjmax] += 1; // advance jth row head
         selected_indices.push_back(std::make_pair(jmax, kkmax));
@@ -153,7 +150,7 @@ subproblem(
 
 
 std::tuple<torch::Tensor, PruningQPState>
-compute_d_fast(torch::Tensor q, torch::Tensor eta) {
+compute_d_fast(torch::Tensor q, const float eta) {
 
     q = q.t();
     auto data = PruningQPData{q, eta};
@@ -164,7 +161,7 @@ compute_d_fast(torch::Tensor q, torch::Tensor eta) {
     auto sol = PruningQPState(data.n_nodes);
 
     // output
-    auto d = eta.clone();
+    torch::Tensor d = torch::zeros(data.n_nodes);
     auto d_acc = d.accessor<float, 1>();
 
     // solve all nested qps to initialize

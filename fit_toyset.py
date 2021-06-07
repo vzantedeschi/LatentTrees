@@ -20,7 +20,7 @@ from src.utils import deterministic
 @hydra.main(config_path='config/default-xor.yaml')
 def main(cfg):
 
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.DISTR}/{cfg.model.TYPE}/twophased={cfg.training.TWO_PHASED}/split={cfg.model.SPLIT}/comp={cfg.model.COMP}/depth={cfg.model.BST_DEPTH}/seed={cfg.training.SEED}/"
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.DISTR}/{cfg.model.TYPE}/twophased={cfg.training.TWO_PHASED}/split={cfg.model.SPLIT}/comp={cfg.model.COMP}/depth={cfg.model.BST_DEPTH}/reg={cfg.training.REG}/seed={cfg.training.SEED}/"
     SAVE_DIR = Path(SAVE_DIR)
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -28,18 +28,14 @@ def main(cfg):
 
     deterministic(cfg.training.SEED)
 
-    NORM = float('inf')
-
     # generate toy dataset
     data = Dataset(cfg.dataset.DISTR, n=cfg.dataset.N)
 
     if cfg.model.TYPE == 'LT':
 
-        pruning = cfg.training.REG > 0
-
         if cfg.dataset.DISTR == 'reg-xor':
             
-            model = LTRegressor(cfg.model.BST_DEPTH, 2, 1, pruned=pruning, linear=cfg.model.LINEAR, split_func=cfg.model.SPLIT, comp_func=cfg.model.COMP)
+            model = LTRegressor(cfg.model.BST_DEPTH, 2, 1, reg=cfg.training.REG, linear=cfg.model.LINEAR, split_func=cfg.model.SPLIT, comp_func=cfg.model.COMP)
 
             # init loss
             criterion = torch.nn.MSELoss(reduction="mean")
@@ -49,7 +45,7 @@ def main(cfg):
             data.labels = data.Y
 
             # model = LTBinaryClassifier.load_model(SAVE_DIR) # to load a pretrained model instead
-            model = LTBinaryClassifier(cfg.model.BST_DEPTH, 2, pruned=pruning, linear=cfg.model.LINEAR, split_func=cfg.model.SPLIT, comp_func=cfg.model.COMP)
+            model = LTBinaryClassifier(cfg.model.BST_DEPTH, 2, reg=cfg.training.REG, linear=cfg.model.LINEAR, split_func=cfg.model.SPLIT, comp_func=cfg.model.COMP)
 
             # init loss
             criterion = torch.nn.BCELoss(reduction="mean")
@@ -57,17 +53,20 @@ def main(cfg):
         # init optimizer
         optimizer = torch.optim.SGD(model.parameters(), lr=cfg.training.LR)
 
-        monitor = MonitorTree(pruning, SAVE_DIR)
+        monitor = MonitorTree(cfg.training.REG > 0, SAVE_DIR)
 
         if cfg.training.TWO_PHASED:
-            twophased_train_batch(data.X, data.Y, model, optimizer, criterion, nb_iter=cfg.training.ITER, reg=cfg.training.REG, norm=NORM, monitor=monitor)
+            twophased_train_batch(data.X, data.Y, model, optimizer, criterion, nb_iter=cfg.training.ITER, monitor=monitor)
         else:
-            train_batch(data.X, data.Y, model, optimizer, criterion, nb_iter=cfg.training.ITER, reg=cfg.training.REG, norm=NORM, monitor=monitor)
+            train_batch(data.X, data.Y, model, optimizer, criterion, nb_iter=cfg.training.ITER, monitor=monitor)
 
         monitor.close()
         # save model
         model.save_model(optimizer, dict(cfg), SAVE_DIR)
         bst = model.latent_tree.bst
+
+    else:
+        raise NotImplementedError()
 
     # ---------------------------------------------------------------------- PLOT PREDICTIONS
 

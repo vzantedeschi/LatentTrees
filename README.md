@@ -1,6 +1,5 @@
-# LatentTrees
-
-Code source of [Learning Binary Trees via Sparse Relaxation](https://arxiv.org/abs/2010.04627).
+# Learning Binary Trees by Argmin Differentiation
+Code source of [Learning Binary Trees by Argmin Differentiation](https://arxiv.org/abs/2010.04627).
 
 ### Dependencies
 

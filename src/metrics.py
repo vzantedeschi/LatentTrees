@@ -84,24 +84,7 @@ def node_statistics(X, Y, model, depth):
     for z_t in selected_zs.T:
         y_distrs.append(Y[z_t > 0])
 
-    if model.latent_tree.split_func == "linear":
-        # distance from decision boundaries of points assigned to each node
-        split_dists = model.db_distance(x).detach().numpy()
-
-        all_dists = np.zeros(tree_shape)
-        all_dists[:, model.latent_tree.bst.desc_left] = split_dists
-        all_dists[:, model.latent_tree.bst.desc_right] = split_dists
-
-        dist_medians, dist_means = [], []
-        for z_t, dist_t in zip(selected_zs.T, all_dists[:, :nb_nodes].T):
-            dist_medians.append(np.median(dist_t[z_t > 0]))
-            dist_means.append(np.mean(dist_t[z_t > 0]))
-
-        return np.stack(dist_medians), np.stack(dist_means), np.stack(stds), y_distrs, zs
-
-    else:
-
-        return np.stack(stds), y_distrs, zs
+    return np.stack(stds), y_distrs, zs
 
 
 if __name__ == "__main__":

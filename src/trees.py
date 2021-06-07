@@ -92,6 +92,16 @@ class BinarySearchTree():
 
         return res 
 
+    def get_node_ancestors(self, n):
+
+        ancs = [n]
+
+        while n > 0:
+            n = self.parent(n)
+            ancs.append(n)
+
+        return ancs
+
 def str_as_bst(nodes):
 
     depth = int((len(nodes) + 1) ** 0.5)

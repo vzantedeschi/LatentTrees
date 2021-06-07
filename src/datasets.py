@@ -19,7 +19,8 @@ REAL_DATASETS = {
     'COVTYPE': fetch_COVTYPE,
     'ALOI': fetch_ALOI,
     'DIGITS': fetch_DIGITS,
-    'MUSHROOMS': fetch_MUSHROOMS,
+    'MUSH': fetch_MUSHROOMS,
+    'TTT': fetch_TICTACTOE,
 }
 
 TOY_DATASETS = [
@@ -34,18 +35,23 @@ class Dataset:
     Code adapted from https://github.com/Qwicen/node/blob/master/lib/data.py .
 
     """
-    def __init__(self, dataset, data_path=Path('./DATA'), normalize=False, normalize_target=False, quantile_transform=False, quantile_noise=1e-3, in_features=None, out_features=None, flatten=False, **kwargs):
+    def __init__(self, dataset, data_path='./DATA', normalize=False, normalize_target=False, quantile_transform=False, quantile_noise=1e-3, in_features=None, out_features=None, flatten=False, **kwargs):
         """
         Dataset is a dataclass that contains all training and evaluation data required for an experiment
-        :param dataset: a pre-defined dataset name (see DATSETS) or a custom dataset
+        :param dataset: a pre-defined dataset name (see DATASETS) or a custom dataset
             Your dataset should be at (or will be downloaded into) {data_path}/{dataset}
         :param data_path: a shared data folder path where the dataset is stored (or will be downloaded into)
         :param normalize: standardize features by removing the mean and scaling to unit variance
+        :param quantile_transform: whether tranform the feature distributions into normals, using a quantile transform
+        :param quantile_noise: magnitude of the quantile noise
+        :param in_features: which features to use as inputs
+        :param out_features: which features to reconstruct as output
+        :param flatten: whether flattening instances to vectors
         :param kwargs: depending on the dataset, you may select train size, test size or other params
         """
 
         if dataset in REAL_DATASETS:
-            data_dict = REAL_DATASETS[dataset](data_path / dataset, **kwargs)
+            data_dict = REAL_DATASETS[dataset](Path(data_path) / dataset, **kwargs)
 
             self.X_train = data_dict['X_train']
             self.y_train = data_dict['y_train']

@@ -11,7 +11,7 @@ class PruningQPFast(torch.autograd.Function):
     @staticmethod
     def forward(ctx, q, eta):
         d, ctx.state = compute_d_fast(q, eta)
-        ctx.save_for_backward(q, eta)
+        ctx.save_for_backward(q)
         return d
 
     @staticmethod
@@ -34,21 +34,19 @@ class PruningQPFast(torch.autograd.Function):
         grad_d_colors.index_add_(0, torch.LongTensor(color_inv), grad_d)
 
         # next,
-        # partial d_colors[c] / eta[i] = 1/denom[c] if i has color c, else 0
         # partial d_colors[c] / q[i,k] = 1/denom[c] if (i,k) in indices[c]
-        q, eta = ctx.saved_tensors
-        grad_eta = torch.zeros_like(eta)
+        q, = ctx.saved_tensors
+        # grad_eta = torch.zeros_like(eta)
         grad_q = torch.zeros_like(q)
 
         for c in range(n_colors):
             color = color_uniq[c]  # map back to discontinuous index
-            grad_eta[color_inv == c] += grad_d_colors[c] / denoms[color]
 
             rows = [k for _, k in indices[color]]
             cols = [i for i, _ in indices[color]]
             grad_q[rows, cols] += grad_d_colors[c] / denoms[color]
 
-        return grad_q, grad_eta
+        return grad_q, None
 
 
 def pruning_qp(q, eta):

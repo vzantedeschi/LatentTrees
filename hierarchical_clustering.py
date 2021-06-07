@@ -19,25 +19,24 @@ from src.datasets import Dataset, TorchDataset
 from src.utils import deterministic 
 
 DATA_NAME = sys.argv[1]
+TREE_DEPTH = int(sys.argv[2])
+REG = float(sys.argv[3])
 
 LR = 0.001
 EPOCHS = 100
 
+# selecting input and output features for self-supervised training
 if DATA_NAME == "COVTYPE":
     out_features = [3, 4]
     in_features = list(set(range(54)) - set(out_features))
     BATCH_SIZE = 512
     SPLIT = 'linear'
-    TREE_DEPTH = 5
-    REG = 784.2856895801542
 
-else DATA_NAME == "GLASS":
+elif DATA_NAME == "GLASS":
     out_features = [0, 1]
     in_features = list(set(range(9)) - set(out_features))
     BATCH_SIZE = 8
     SPLIT = 'linear'
-    TREE_DEPTH = 6
-    REG = 17.893973029582362
     
 pruning = REG > 0
 
@@ -45,19 +44,19 @@ data = Dataset(DATA_NAME, normalize=True, in_features=in_features, out_features=
 classes = np.unique(data.y_train)
 num_classes = max(classes) + 1
 
-trainloader = DataLoader(TorchDataset((data.X_train_in, data.X_train_out)), batch_size=BATCH_SIZE, shuffle=True, num_workers=12)
-valloader = DataLoader(TorchDataset((data.X_valid_in, data.X_valid_out)), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12)
-testloader = DataLoader(TorchDataset((data.X_test_in, data.X_test_out)), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=12)
+trainloader = DataLoader(TorchDataset(data.X_train_in, data.X_train_out), batch_size=BATCH_SIZE, shuffle=True, num_workers=16)
+valloader = DataLoader(TorchDataset(data.X_valid_in, data.X_valid_out), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=16)
+testloader = DataLoader(TorchDataset(data.X_test_in, data.X_test_out), batch_size=BATCH_SIZE*2, shuffle=False, num_workers=16)
 
 test_scores= []
 for SEED in [1225, 1337, 2020, 6021991]:
 
     deterministic(SEED)
 
-    save_dir = Path("./results/clustering-selfsup/") / DATA_NAME / "out-feats={}/depth={}/reg={}/seed={}".format(out_features, TREE_DEPTH, REG, SEED)
+    save_dir = Path("./results/clustering-selfsup/") / DATA_NAME / f"out-feats={out_features}/depth={TREE_DEPTH}/reg={REG}/seed={SEED}"
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    model = LTRegressor(TREE_DEPTH, data.X_train_in.shape[1:], data.X_train_out.shape[1:], pruned=pruning, split_func=SPLIT)
+    model = LTRegressor(TREE_DEPTH, data.X_train_in.shape[1:], data.X_train_out.shape[1:], reg=REG, split_func=SPLIT)
 
     print(model.count_parameters(), "model's parameters")
     # init optimizer
@@ -88,7 +87,7 @@ for SEED in [1225, 1337, 2020, 6021991]:
     best_e = -1
     no_improv = 0
     for e in range(EPOCHS):
-        train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
+        train_stochastic(trainloader, model, optimizer, criterion, epoch=e, monitor=monitor)
 
         val_loss = evaluate(valloader, model, {'MSE': criterion}, epoch=e, monitor=monitor)
 
