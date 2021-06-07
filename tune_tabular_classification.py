@@ -48,11 +48,11 @@ def objective(trial):
 
     if LINEAR:
         save_dir = root_dir / "depth={}/reg={}/seed={}".format(TREE_DEPTH, REG, SEED)
-        model = LTBinaryClassifier(TREE_DEPTH, data.X_train.shape[1], pruned=pruning, linear=LINEAR)
+        model = LTBinaryClassifier(TREE_DEPTH, data.X_train.shape[1], reg=REG, linear=LINEAR)
 
     else:
         save_dir = root_dir / "depth={}/reg={}/mlp-layers={}/dropout={}/seed={}".format(TREE_DEPTH, REG, MLP_LAYERS, DROPOUT, SEED)
-        model = LTBinaryClassifier(TREE_DEPTH, data.X_train.shape[1], pruned=pruning, linear=LINEAR, layers=MLP_LAYERS, dropout=DROPOUT)
+        model = LTBinaryClassifier(TREE_DEPTH, data.X_train.shape[1], reg=REG, linear=LINEAR, layers=MLP_LAYERS, dropout=DROPOUT)
 
     print(model.count_parameters(), "model's parameters")
     
@@ -85,12 +85,12 @@ def objective(trial):
     best_e = -1
     no_improv = 0
     for e in range(EPOCHS):
-        train_stochastic(trainloader, model, optimizer, criterion, epoch=e, reg=REG, monitor=monitor)
+        train_stochastic(trainloader, model, optimizer, criterion, epoch=e, monitor=monitor)
 
         val_loss = evaluate(valloader, model, {'ER': eval_criterion}, epoch=e, monitor=monitor)
         
         no_improv += 1
-        if val_loss['ER'] <= best_val_loss:
+        if val_loss['ER'] < best_val_loss:
             best_val_loss = val_loss['ER']
             best_e = e
             no_improv = 0
