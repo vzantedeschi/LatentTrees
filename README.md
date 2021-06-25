@@ -1,5 +1,5 @@
 # Learning Binary Trees by Argmin Differentiation
-Code source of [Learning Binary Trees by Argmin Differentiation](https://arxiv.org/abs/2010.04627).
+Code source of ICML 2021 paper [Learning Binary Trees by Argmin Differentiation](https://arxiv.org/abs/2010.04627).
 
 ### Dependencies
 
@@ -43,3 +43,15 @@ Default configuration is stored in 'config/default-xor.yaml'. You can edit direc
 python3 fit_toyset.py dataset.N=1000 model.SPLIT=linear
 ```
 See [Hydra](https://hydra.cc/docs/intro/) for a tutorial.
+
+### Citation
+
+``` bibtex
+  @article{zantedeschi2021learning,
+    title={Learning Binary Trees by Argmin Differentiation},
+    author={Zantedeschi, Valentina and Kusner, Matt J and Niculae, Vlad},
+    journal={ICML},
+    year={2021}
+  }
+```
+
